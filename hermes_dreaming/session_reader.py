@@ -145,43 +145,42 @@ def _read_via_sqlite(limit: int) -> list[SessionDigest] | None:
     if not db_file.exists():
         return None
     try:
-        conn = sqlite3.connect(str(db_file))
-        conn.row_factory = sqlite3.Row
-        session_rows = conn.execute(
-            """
-            SELECT s.id, s.title, s.started_at, s.message_count, s.source
-            FROM sessions s
-            LEFT JOIN (
-                SELECT session_id, MAX(timestamp) AS last_active
-                FROM messages GROUP BY session_id
-            ) m ON m.session_id = s.id
-            WHERE s.parent_session_id IS NULL OR EXISTS (
-                SELECT 1 FROM sessions p
-                WHERE p.id = s.parent_session_id AND p.end_reason = 'branched'
-            )
-            ORDER BY COALESCE(m.last_active, s.started_at) DESC, s.id DESC
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
-
-        digests = []
-        for row in session_rows:
-            sid = row["id"]
-            msg_rows = conn.execute(
-                "SELECT role, content FROM messages WHERE session_id = ? ORDER BY timestamp, id",
-                (sid,),
+        with sqlite3.connect(str(db_file)) as conn:
+            conn.row_factory = sqlite3.Row
+            session_rows = conn.execute(
+                """
+                SELECT s.id, s.title, s.started_at, s.message_count, s.source
+                FROM sessions s
+                LEFT JOIN (
+                    SELECT session_id, MAX(timestamp) AS last_active
+                    FROM messages GROUP BY session_id
+                ) m ON m.session_id = s.id
+                WHERE s.parent_session_id IS NULL OR EXISTS (
+                    SELECT 1 FROM sessions p
+                    WHERE p.id = s.parent_session_id AND p.end_reason = 'branched'
+                )
+                ORDER BY COALESCE(m.last_active, s.started_at) DESC, s.id DESC
+                LIMIT ?
+                """,
+                (limit,),
             ).fetchall()
-            raw_msgs = [{"role": r["role"], "content": r["content"]} for r in msg_rows]
-            digests.append(SessionDigest(
-                session_id=sid,
-                title=row["title"],
-                started_at=row["started_at"],
-                message_count=row["message_count"] or 0,
-                source=row["source"] or "",
-                user_turns=_extract_user_turns(raw_msgs),
-            ))
-        conn.close()
+
+            digests = []
+            for row in session_rows:
+                sid = row["id"]
+                msg_rows = conn.execute(
+                    "SELECT role, content FROM messages WHERE session_id = ? ORDER BY timestamp, id",
+                    (sid,),
+                ).fetchall()
+                raw_msgs = [{"role": r["role"], "content": r["content"]} for r in msg_rows]
+                digests.append(SessionDigest(
+                    session_id=sid,
+                    title=row["title"],
+                    started_at=row["started_at"],
+                    message_count=row["message_count"] or 0,
+                    source=row["source"] or "",
+                    user_turns=_extract_user_turns(raw_msgs),
+                ))
         return digests
     except Exception as exc:
         logger.debug("dreaming: direct SQLite read failed: %s", exc)

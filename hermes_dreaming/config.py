@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
+from dataclasses import dataclass
+
 import yaml
-from dataclasses import dataclass, field
-from pathlib import Path
 
 from .paths import CONFIG_FILE
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -33,7 +36,8 @@ def load() -> DreamingConfig:
                 k: v for k, v in dreaming_section.items()
                 if k in DreamingConfig.__dataclass_fields__
             })
-        except Exception:
+        except Exception as exc:
+            logger.warning("dreaming: failed to load config %s: %s", CONFIG_FILE, exc)
             _config = DreamingConfig()
     else:
         _config = DreamingConfig()

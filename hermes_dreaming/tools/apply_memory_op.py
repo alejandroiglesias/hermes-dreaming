@@ -32,12 +32,14 @@ from ..memory_io import (
     apply_add,
     apply_remove,
     apply_replace,
+    preview_add,
+    preview_remove,
+    preview_replace,
     read as read_memory,
 )
 from ..paths import (
     BACKUPS_DIR,
     DREAMING_DIR,
-    HERMES_MEMORIES_DIR,
     MEMORY_MD,
     USER_MD,
     ensure_dirs,
@@ -73,7 +75,7 @@ SCHEMA = {
             "old_text": {
                 "type": "string",
                 "description": (
-                    "Exact substring of the existing entry to replace or remove. "
+                    "Exact existing bullet entry to replace or remove, with or without the '- ' prefix. "
                     "Required for 'replace' and 'remove'."
                 ),
             },
@@ -134,8 +136,19 @@ def _make_backup(run_ts: str) -> None:
     logger.info("dreaming: backup created at %s", backup_dir)
 
 
-def _target_path(target: str) -> Path:
-    return MEMORY_MD if target == "memory" else USER_MD
+def _preview_mutation(proposed: ProposedOp, current_raw: str, path: Path) -> MutationResult:
+    if proposed.op == "add":
+        return preview_add(current_raw, proposed.new_text or "")
+    if proposed.op == "replace":
+        return preview_replace(
+            current_raw,
+            path,
+            proposed.old_text or "",
+            proposed.new_text or "",
+        )
+    if proposed.op == "remove":
+        return preview_remove(current_raw, path, proposed.old_text or "")
+    return MutationResult(ok=False, error=f"unknown op: {proposed.op!r}")
 
 
 def handler(params: dict[str, Any]) -> dict[str, Any]:
@@ -155,15 +168,14 @@ def handler(params: dict[str, Any]) -> dict[str, Any]:
     score = float(params.get("score", 0.0))
     supersession_confidence = float(params.get("supersession_confidence", 0.0))
 
-    op_hash = _op_hash(op_str, target, old_text, new_text)
-
-    # Idempotence: skip if already promoted in a previous live run
-    if op_hash in existing_promotion_hashes():
+    if target not in ("memory", "user"):
         return {
-            "skipped": True,
-            "reason": "already applied in a previous run (idempotent)",
-            "hash": op_hash,
+            "applied": False,
+            "dry_run": dry_run,
+            "error": f"unknown target: {target!r}. Use 'memory' or 'user'.",
         }
+
+    op_hash = _op_hash(op_str, target, old_text, new_text)
 
     proposed = ProposedOp(
         op=op_str,  # type: ignore[arg-type]
@@ -184,22 +196,20 @@ def handler(params: dict[str, Any]) -> dict[str, Any]:
             "thresholds": thresholds_for_prompt(),
         }
 
-    decision_record = {
-        "hash": op_hash,
-        "op": op_str,
-        "target": target,
-        "old_text": old_text,
-        "new_text": new_text,
-        "reason": reason,
-        "sources": sources,
-        "score": score,
-        "supersession_confidence": supersession_confidence,
-        "decision": "proposed" if dry_run else "applied",
-        "phase": "Deep",
-    }
-    append_decisions([decision_record], run_id=run_id)
-
     if dry_run:
+        append_decisions([{
+            "hash": op_hash,
+            "op": op_str,
+            "target": target,
+            "old_text": old_text,
+            "new_text": new_text,
+            "reason": reason,
+            "sources": sources,
+            "score": score,
+            "supersession_confidence": supersession_confidence,
+            "decision": "proposed",
+            "phase": "Deep",
+        }], run_id=run_id)
         return {
             "applied": False,
             "dry_run": True,
@@ -213,7 +223,7 @@ def handler(params: dict[str, Any]) -> dict[str, Any]:
             "hash": op_hash,
         }
 
-    return _apply_live(proposed, op_hash, run_id, cfg, state)
+    return _apply_live(proposed, op_hash, run_id, cfg)
 
 
 def _apply_live(
@@ -221,31 +231,45 @@ def _apply_live(
     op_hash: str,
     run_id: str,
     cfg: Any,
-    state: dict[str, Any],
 ) -> dict[str, Any]:
-    run_info = state.get("current_run", {})
-    changes_applied = run_info.get("changes_applied", 0)
-    adds_applied = run_info.get("adds_applied", 0)
-    new_chars_added = run_info.get("new_chars_added", 0)
-
     max_changes = getattr(cfg, "max_changes_per_run", 3)
     max_adds = getattr(cfg, "max_adds_per_run", 1)
     max_new_chars = getattr(cfg, "max_new_chars_per_run", 250)
 
-    # Run-level limits
-    if changes_applied >= max_changes:
-        return {
-            "applied": False,
-            "error": f"run limit reached: max_changes_per_run={max_changes} already applied",
-        }
-    if proposed.op == "add" and adds_applied >= max_adds:
-        return {
-            "applied": False,
-            "error": f"run limit reached: max_adds_per_run={max_adds} already applied",
-        }
-    if proposed.op in ("add", "replace") and proposed.new_text:
-        incoming_chars = len(proposed.new_text)
-        if new_chars_added + incoming_chars > max_new_chars:
+    with filelock.FileLock(str(_LOCK_FILE), timeout=10):
+        state = read_state()
+        run_info = state.get("current_run", {})
+        changes_applied = run_info.get("changes_applied", 0)
+        adds_applied = run_info.get("adds_applied", 0)
+        new_chars_added = run_info.get("new_chars_added", 0)
+
+        # Idempotence must be checked under the mutation lock so concurrent calls
+        # cannot apply the same operation before either records a promotion.
+        if op_hash in existing_promotion_hashes():
+            return {
+                "skipped": True,
+                "reason": "already applied in a previous run (idempotent)",
+                "hash": op_hash,
+            }
+
+        # Run-level limits
+        if changes_applied >= max_changes:
+            return {
+                "applied": False,
+                "error": f"run limit reached: max_changes_per_run={max_changes} already applied",
+            }
+        if proposed.op == "add" and adds_applied >= max_adds:
+            return {
+                "applied": False,
+                "error": f"run limit reached: max_adds_per_run={max_adds} already applied",
+            }
+        current = read_memory(proposed.target)
+        path = current.path
+        preview = _preview_mutation(proposed, current.raw, path)
+        if not preview.ok:
+            return {"applied": False, "error": preview.error}
+        incoming_chars = max(0, preview.char_delta)
+        if proposed.op in ("add", "replace") and new_chars_added + incoming_chars > max_new_chars:
             return {
                 "applied": False,
                 "error": (
@@ -254,10 +278,15 @@ def _apply_live(
                     f"({new_chars_added} already added this run)"
                 ),
             }
+        if len(preview.new_text) > current.char_limit:
+            return {
+                "applied": False,
+                "error": (
+                    f"{path.name} capacity exceeded: mutation would produce "
+                    f"{len(preview.new_text)}/{current.char_limit} chars"
+                ),
+            }
 
-    path = _target_path(proposed.target)
-
-    with filelock.FileLock(str(_LOCK_FILE), timeout=10):
         # Backup once per run (first mutation)
         if not run_info.get("backup_created"):
             _make_backup(run_id)
@@ -281,37 +310,50 @@ def _apply_live(
         if not result.ok:
             return {"applied": False, "error": result.error}
 
-    # Update run counters in state
-    changes_applied += 1
-    if proposed.op == "add":
-        adds_applied += 1
-    if proposed.op in ("add", "replace") and result.char_delta > 0:
-        new_chars_added += result.char_delta
+        # Update run counters in state
+        changes_applied += 1
+        if proposed.op == "add":
+            adds_applied += 1
+        if proposed.op in ("add", "replace") and result.char_delta > 0:
+            new_chars_added += result.char_delta
 
-    run_info.update({
-        "changes_applied": changes_applied,
-        "adds_applied": adds_applied,
-        "new_chars_added": new_chars_added,
-    })
-    state["current_run"] = run_info
-    write_state(state)
+        run_info.update({
+            "changes_applied": changes_applied,
+            "adds_applied": adds_applied,
+            "new_chars_added": new_chars_added,
+        })
+        state["current_run"] = run_info
+        write_state(state)
 
-    # Record to promotions sidecar
-    now_iso = datetime.now(timezone.utc).isoformat()
-    append_promotion({
-        "hash": op_hash,
-        "op": proposed.op,
-        "target": proposed.target,
-        "old_text": proposed.old_text,
-        "new_text": proposed.new_text,
-        "reason": proposed.reason,
-        "sources": proposed.sources,
-        "score": proposed.score,
-        "supersession_confidence": proposed.supersession_confidence,
-        "status": "active",
-        "promoted_at": now_iso,
-        "run_id": run_id,
-    })
+        # Record to promotions sidecar inside the lock for idempotent concurrency.
+        now_iso = datetime.now(timezone.utc).isoformat()
+        append_promotion({
+            "hash": op_hash,
+            "op": proposed.op,
+            "target": proposed.target,
+            "old_text": proposed.old_text,
+            "new_text": proposed.new_text,
+            "reason": proposed.reason,
+            "sources": proposed.sources,
+            "score": proposed.score,
+            "supersession_confidence": proposed.supersession_confidence,
+            "status": "active",
+            "promoted_at": now_iso,
+            "run_id": run_id,
+        })
+        append_decisions([{
+            "hash": op_hash,
+            "op": proposed.op,
+            "target": proposed.target,
+            "old_text": proposed.old_text,
+            "new_text": proposed.new_text,
+            "reason": proposed.reason,
+            "sources": proposed.sources,
+            "score": proposed.score,
+            "supersession_confidence": proposed.supersession_confidence,
+            "decision": "applied",
+            "phase": "Deep",
+        }], run_id=run_id)
 
     logger.info(
         "dreaming: applied %s on %s (score=%.2f, hash=%s)",
