@@ -104,54 +104,101 @@ def _write_atomic(path: Path, content: str) -> None:
         raise
 
 
-def _find_line(lines: list[str], substring: str) -> int:
-    """Return index of first line containing *substring*, or -1."""
-    for i, line in enumerate(lines):
-        if substring in line:
-            return i
-    return -1
+def _line_body(line: str) -> str:
+    stripped = line.strip()
+    if stripped.startswith("- "):
+        return stripped[2:].strip()
+    return stripped
+
+
+def _find_line(lines: list[str], old_text: str) -> int:
+    """Return the exact matching line index, or -1 if absent or ambiguous."""
+    anchor = old_text.strip()
+    matches = [
+        i for i, line in enumerate(lines)
+        if line.strip() == anchor or _line_body(line) == anchor
+    ]
+    return matches[0] if len(matches) == 1 else -1
+
+
+def _resolve_line(lines: list[str], old_text: str, path: Path) -> tuple[int | None, str]:
+    """Resolve an exact line match and report partial/ambiguous anchors clearly."""
+    anchor = old_text.strip()
+    if not anchor:
+        return None, f"old_text is required for {path.name}"
+
+    exact_matches = [
+        i for i, line in enumerate(lines)
+        if line.strip() == anchor or _line_body(line) == anchor
+    ]
+    if len(exact_matches) == 1:
+        return exact_matches[0], ""
+    if len(exact_matches) > 1:
+        return None, f"old_text is ambiguous in {path.name}: {old_text!r}"
+
+    partial_matches = [i for i, line in enumerate(lines) if anchor in line.strip()]
+    if partial_matches:
+        return None, (
+            f"old_text must exactly match one entry in {path.name}; "
+            f"partial anchor matched {len(partial_matches)} line(s): {old_text!r}"
+        )
+    return None, f"old_text not found in {path.name}: {old_text!r}"
+
+
+def preview_add(raw: str, new_text: str) -> MutationResult:
+    """Return the add result without writing it."""
+    separator = "\n" if raw and not raw.endswith("\n") else ""
+    updated = raw + separator + new_text + "\n"
+    return MutationResult(ok=True, new_text=updated, char_delta=len(updated) - len(raw))
+
+
+def preview_replace(raw: str, path: Path, old_text: str, new_text: str) -> MutationResult:
+    """Return the replace result without writing it."""
+    lines = raw.splitlines(keepends=True)
+    idx, error = _resolve_line([l.rstrip("\r\n") for l in lines], old_text, path)
+    if idx is None:
+        return MutationResult(ok=False, error=error)
+    lines[idx] = f"{new_text}\n"
+    updated = "".join(lines)
+    return MutationResult(ok=True, new_text=updated, char_delta=len(updated) - len(raw))
+
+
+def preview_remove(raw: str, path: Path, old_text: str) -> MutationResult:
+    """Return the remove result without writing it."""
+    lines = raw.splitlines(keepends=True)
+    idx, error = _resolve_line([l.rstrip("\r\n") for l in lines], old_text, path)
+    if idx is None:
+        return MutationResult(ok=False, error=error)
+    removed_len = len(lines[idx])
+    del lines[idx]
+    updated = "".join(lines)
+    return MutationResult(ok=True, new_text=updated, char_delta=-removed_len)
 
 
 def apply_add(path: Path, new_text: str) -> MutationResult:
     """Append *new_text* as a new bullet line."""
     raw = path.read_text(encoding="utf-8") if path.exists() else ""
-    separator = "\n" if raw and not raw.endswith("\n") else ""
-    updated = raw + separator + new_text + "\n"
-    _write_atomic(path, updated)
-    return MutationResult(ok=True, new_text=updated, char_delta=len(updated) - len(raw))
+    result = preview_add(raw, new_text)
+    _write_atomic(path, result.new_text)
+    return result
 
 
 def apply_replace(path: Path, old_text: str, new_text: str) -> MutationResult:
-    """Replace the line containing *old_text* with *new_text*."""
+    """Replace the single entry exactly matching *old_text* with *new_text*."""
     raw = path.read_text(encoding="utf-8") if path.exists() else ""
-    lines = raw.splitlines(keepends=True)
-    idx = _find_line([l.rstrip("\n") for l in lines], old_text)
-    if idx == -1:
-        return MutationResult(
-            ok=False,
-            error=f"old_text not found in {path.name}: {old_text!r}",
-        )
-    lines[idx] = f"{new_text}\n"
-    updated = "".join(lines)
-    _write_atomic(path, updated)
-    return MutationResult(ok=True, new_text=updated, char_delta=len(updated) - len(raw))
+    result = preview_replace(raw, path, old_text, new_text)
+    if result.ok:
+        _write_atomic(path, result.new_text)
+    return result
 
 
 def apply_remove(path: Path, old_text: str) -> MutationResult:
-    """Remove the line containing *old_text*."""
+    """Remove the single entry exactly matching *old_text*."""
     raw = path.read_text(encoding="utf-8") if path.exists() else ""
-    lines = raw.splitlines(keepends=True)
-    idx = _find_line([l.rstrip("\n") for l in lines], old_text)
-    if idx == -1:
-        return MutationResult(
-            ok=False,
-            error=f"old_text not found in {path.name}: {old_text!r}",
-        )
-    removed_len = len(lines[idx])
-    del lines[idx]
-    updated = "".join(lines)
-    _write_atomic(path, updated)
-    return MutationResult(ok=True, new_text=updated, char_delta=-removed_len)
+    result = preview_remove(raw, path, old_text)
+    if result.ok:
+        _write_atomic(path, result.new_text)
+    return result
 
 
 def format_for_prompt(mf: MemoryFile) -> str:

@@ -75,7 +75,7 @@ def test_apply_add_separator_when_no_trailing_newline(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_apply_replace_replaces_matching_line(tmp_md):
-    result = apply_replace(tmp_md, "Entry one", "- Entry one UPDATED.")
+    result = apply_replace(tmp_md, "Entry one.", "- Entry one UPDATED.")
     assert result.ok
     content = tmp_md.read_text(encoding="utf-8")
     assert "- Entry one UPDATED." in content
@@ -90,7 +90,7 @@ def test_apply_replace_returns_error_when_not_found(tmp_md):
 
 def test_apply_replace_char_delta_is_correct(tmp_md):
     old_text = tmp_md.read_text(encoding="utf-8")
-    result = apply_replace(tmp_md, "Entry two", "- Entry two REPLACED.")
+    result = apply_replace(tmp_md, "Entry two.", "- Entry two REPLACED.")
     new_text = tmp_md.read_text(encoding="utf-8")
     assert result.char_delta == len(new_text) - len(old_text)
 
@@ -100,7 +100,7 @@ def test_apply_replace_char_delta_is_correct(tmp_md):
 # ---------------------------------------------------------------------------
 
 def test_apply_remove_removes_matching_line(tmp_md):
-    result = apply_remove(tmp_md, "Entry two")
+    result = apply_remove(tmp_md, "Entry two.")
     assert result.ok
     content = tmp_md.read_text(encoding="utf-8")
     assert "Entry two" not in content
@@ -115,7 +115,7 @@ def test_apply_remove_returns_error_when_not_found(tmp_md):
 
 
 def test_apply_remove_char_delta_is_negative(tmp_md):
-    result = apply_remove(tmp_md, "Entry one")
+    result = apply_remove(tmp_md, "Entry one.")
     assert result.ok
     assert result.char_delta < 0
 
@@ -123,3 +123,17 @@ def test_apply_remove_char_delta_is_negative(tmp_md):
 def test_find_line_returns_minus_one_when_missing():
     lines = ["- Entry one.", "- Entry two."]
     assert _find_line(lines, "Entry three") == -1
+
+
+def test_apply_replace_rejects_partial_anchor(tmp_md):
+    result = apply_replace(tmp_md, "Entry one", "- Entry one UPDATED.")
+    assert not result.ok
+    assert "exactly match" in result.error
+
+
+def test_apply_remove_rejects_ambiguous_exact_anchor(tmp_path):
+    p = tmp_path / "MEM.md"
+    p.write_text("- Duplicate.\n- Duplicate.\n", encoding="utf-8")
+    result = apply_remove(p, "Duplicate.")
+    assert not result.ok
+    assert "ambiguous" in result.error

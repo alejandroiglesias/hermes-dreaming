@@ -212,6 +212,18 @@ class TestLiveAdd:
         assert result["applied"] is False
         assert "score gate" in result.get("error", "")
 
+    def test_add_fails_when_target_capacity_exceeded(self, isolated_paths, monkeypatch):
+        p = isolated_paths
+        p["memory_md"].write_text("- Existing entry.\n", encoding="utf-8")
+        monkeypatch.setattr(_mio, "MEMORY_MD_LIMIT", len("- Existing entry.\n") + 5)
+        _set_live_run(p["dream_dir"])
+
+        result = _tool.handler(_base_params(new_text="- Too long.", score=0.91))
+
+        assert result["applied"] is False
+        assert "capacity exceeded" in result.get("error", "")
+        assert p["memory_md"].read_text(encoding="utf-8") == "- Existing entry.\n"
+
 
 class TestLiveReplace:
     def test_replace_updates_entry(self, isolated_paths):
@@ -221,7 +233,7 @@ class TestLiveReplace:
 
         params = _base_params(
             op="replace",
-            old_text="User likes eating meat",
+            old_text="User likes eating meat.",
             new_text="- User is vegetarian and avoids meat.",
             score=0.92,
             supersession_confidence=0.90,
@@ -250,6 +262,40 @@ class TestLiveReplace:
         assert result["applied"] is False
         assert "not found" in result.get("error", "")
 
+    def test_replace_fails_for_partial_old_text(self, isolated_paths):
+        p = isolated_paths
+        p["memory_md"].write_text("- User likes eating meat.\n", encoding="utf-8")
+        _set_live_run(p["dream_dir"])
+
+        params = _base_params(
+            op="replace",
+            old_text="User likes eating meat",
+            new_text="- User is vegetarian and avoids meat.",
+            score=0.90,
+            supersession_confidence=0.80,
+        )
+        result = _tool.handler(params)
+
+        assert result["applied"] is False
+        assert "exactly match" in result.get("error", "")
+
+    def test_replace_fails_for_ambiguous_old_text(self, isolated_paths):
+        p = isolated_paths
+        p["memory_md"].write_text("- Duplicate.\n- Duplicate.\n", encoding="utf-8")
+        _set_live_run(p["dream_dir"])
+
+        params = _base_params(
+            op="replace",
+            old_text="Duplicate.",
+            new_text="- Replacement.",
+            score=0.90,
+            supersession_confidence=0.80,
+        )
+        result = _tool.handler(params)
+
+        assert result["applied"] is False
+        assert "ambiguous" in result.get("error", "")
+
 
 class TestLiveRemove:
     def test_remove_deletes_entry(self, isolated_paths):
@@ -259,7 +305,7 @@ class TestLiveRemove:
 
         params = _base_params(
             op="remove",
-            old_text="Old stale entry",
+            old_text="Old stale entry.",
             new_text=None,
             score=0.0,
             supersession_confidence=0.90,
@@ -278,13 +324,26 @@ class TestLiveRemove:
 
         params = _base_params(
             op="remove",
-            old_text="Old stale entry",
+            old_text="Old stale entry.",
             new_text=None,
             score=0.0,
             supersession_confidence=0.50,
         )
         result = _tool.handler(params)
         assert result["applied"] is False
+
+
+class TestValidation:
+    def test_invalid_target_is_rejected(self, isolated_paths):
+        p = isolated_paths
+        p["memory_md"].write_text("- Existing.\n", encoding="utf-8")
+        _set_live_run(p["dream_dir"])
+
+        result = _tool.handler(_base_params(target="users"))
+
+        assert result["applied"] is False
+        assert "unknown target" in result.get("error", "")
+        assert not p["user_md"].read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -382,7 +441,7 @@ class TestBriefTest1:
         params = {
             "op": "replace",
             "target": "memory",
-            "old_text": "User likes eating meat",
+            "old_text": "User likes eating meat.",
             "new_text": "- User is vegetarian and avoids meat.",
             "reason": "User stated they became vegetarian.",
             "sources": ["sess-veg-001"],
@@ -414,7 +473,7 @@ class TestBriefTest1:
         _tool.handler({
             "op": "replace",
             "target": "memory",
-            "old_text": "User likes eating meat",
+            "old_text": "User likes eating meat.",
             "new_text": "- User is vegetarian.",
             "reason": "Became vegetarian.",
             "sources": ["sess-a"],
@@ -426,7 +485,7 @@ class TestBriefTest1:
         _tool.handler({
             "op": "replace",
             "target": "memory",
-            "old_text": "User prefers concise answers",
+            "old_text": "User prefers concise answers.",
             "new_text": "- User strongly prefers terse, direct replies.",
             "reason": "Repeated pattern.",
             "sources": ["sess-b"],
@@ -454,7 +513,7 @@ class TestBriefTest4:
         params = {
             "op": "replace",
             "target": "memory",
-            "old_text": "User prefers simple tools over complex frameworks",
+            "old_text": "User prefers simple tools over complex frameworks.",
             "new_text": "- User consistently prefers simple, lightweight tools over complex frameworks.",
             "reason": "Three near-duplicate entries merged into one canonical form.",
             "sources": ["sess-x", "sess-y"],
@@ -482,7 +541,7 @@ class TestBriefTest4:
         _tool.handler({
             "op": "replace",
             "target": "memory",
-            "old_text": "User prefers simple tools over complex frameworks",
+            "old_text": "User prefers simple tools over complex frameworks.",
             "new_text": "- User consistently prefers simple, lightweight tools over complex frameworks.",
             "reason": "Merge duplicates.",
             "sources": ["sess-x"],
@@ -494,7 +553,7 @@ class TestBriefTest4:
         _tool.handler({
             "op": "remove",
             "target": "memory",
-            "old_text": "User likes simple tools for CLI tasks",
+            "old_text": "User likes simple tools for CLI tasks.",
             "reason": "Redundant after merge.",
             "sources": ["sess-x"],
             "score": 0.0,
@@ -505,7 +564,7 @@ class TestBriefTest4:
         _tool.handler({
             "op": "remove",
             "target": "memory",
-            "old_text": "User tends to use simple tools rather than heavyweight solutions",
+            "old_text": "User tends to use simple tools rather than heavyweight solutions.",
             "reason": "Redundant after merge.",
             "sources": ["sess-x"],
             "score": 0.0,

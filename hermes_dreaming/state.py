@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from .paths import STATE_JSON, RUNS_DIR
+
+logger = logging.getLogger(__name__)
 
 
 def _now_iso() -> str:
@@ -17,11 +20,16 @@ def read() -> dict[str, Any]:
         return {}
     try:
         return json.loads(STATE_JSON.read_text())
-    except Exception:
+    except json.JSONDecodeError as exc:
+        logger.warning("dreaming: ignoring malformed state file %s: %s", STATE_JSON, exc)
         return {}
+    except OSError:
+        logger.exception("dreaming: failed to read state file %s", STATE_JSON)
+        raise
 
 
 def write(data: dict[str, Any]) -> None:
+    STATE_JSON.parent.mkdir(parents=True, exist_ok=True)
     STATE_JSON.write_text(json.dumps(data, indent=2))
 
 
@@ -48,6 +56,7 @@ def finish_run(run_ts: str, summary: dict[str, Any]) -> None:
     """Persist run record and update state after a completed run."""
     run_record = {"run_id": run_ts, **summary}
     run_file = RUNS_DIR / f"{run_ts.replace(':', '-')}.json"
+    RUNS_DIR.mkdir(parents=True, exist_ok=True)
     run_file.write_text(json.dumps(run_record, indent=2))
 
     state = read()

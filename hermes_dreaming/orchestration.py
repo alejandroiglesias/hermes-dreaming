@@ -107,7 +107,7 @@ If you need to re-read staged candidates, call `dreaming_get_state`.
    provide a `canonical_text` — compact, standalone, future-tense-agnostic phrasing.
 
    For `supersedes_memory_entry` and `merge_with_existing`:
-   provide `supersedes_entry` — exact substring of the existing memory line.
+   provide `supersedes_entry` — exact existing memory line, with or without the `- ` prefix.
 
    For `promote`, `supersedes_memory_entry`, `merge_with_existing`:
    provide `target` — "memory" or "user".
