@@ -111,16 +111,6 @@ def _line_body(line: str) -> str:
     return stripped
 
 
-def _find_line(lines: list[str], old_text: str) -> int:
-    """Return the exact matching line index, or -1 if absent or ambiguous."""
-    anchor = old_text.strip()
-    matches = [
-        i for i, line in enumerate(lines)
-        if line.strip() == anchor or _line_body(line) == anchor
-    ]
-    return matches[0] if len(matches) == 1 else -1
-
-
 def _resolve_line(lines: list[str], old_text: str, path: Path) -> tuple[int | None, str]:
     """Resolve an exact line match and report partial/ambiguous anchors clearly."""
     anchor = old_text.strip()
@@ -145,8 +135,16 @@ def _resolve_line(lines: list[str], old_text: str, path: Path) -> tuple[int | No
     return None, f"old_text not found in {path.name}: {old_text!r}"
 
 
+def _find_line(lines: list[str], old_text: str) -> int:
+    """Return the exact matching line index, or -1 if absent or ambiguous."""
+    idx, _ = _resolve_line(lines, old_text, Path(""))
+    return -1 if idx is None else idx
+
+
 def preview_add(raw: str, new_text: str) -> MutationResult:
     """Return the add result without writing it."""
+    if not new_text.strip():
+        return MutationResult(ok=False, error="new_text is required for add")
     separator = "\n" if raw and not raw.endswith("\n") else ""
     updated = raw + separator + new_text + "\n"
     return MutationResult(ok=True, new_text=updated, char_delta=len(updated) - len(raw))

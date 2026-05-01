@@ -125,6 +125,18 @@ def test_find_line_returns_minus_one_when_missing():
     assert _find_line(lines, "Entry three") == -1
 
 
+def test_apply_add_rejects_empty_new_text(tmp_md):
+    result = apply_add(tmp_md, "")
+    assert not result.ok
+    assert "required" in result.error
+
+
+def test_apply_add_rejects_whitespace_only_new_text(tmp_md):
+    result = apply_add(tmp_md, "   ")
+    assert not result.ok
+    assert "required" in result.error
+
+
 def test_apply_replace_rejects_partial_anchor(tmp_md):
     result = apply_replace(tmp_md, "Entry one", "- Entry one UPDATED.")
     assert not result.ok
