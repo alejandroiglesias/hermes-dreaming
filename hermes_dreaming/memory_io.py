@@ -8,7 +8,6 @@ handles the filelock, backup, run-limit tracking, and sidecar logging.
 """
 
 import os
-import re
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,15 +15,12 @@ from typing import NamedTuple
 
 from .paths import MEMORY_MD, USER_MD, MEMORY_MD_LIMIT, USER_MD_LIMIT
 
-# HTML comment hint injected by write_memory_hints=true
-_HINT_RE = re.compile(r"<!--drm:[^>]*-->")
-
 
 class MemoryFile(NamedTuple):
     target: str          # "memory" or "user"
     path: Path
     raw: str             # full file text
-    entries: list[str]   # parsed bullet entries (stripped of hint comments)
+    entries: list[str]   # parsed bullet entries
     char_count: int
     char_limit: int
 
@@ -49,14 +45,13 @@ class MemoryFile(NamedTuple):
 
 
 def _parse_entries(text: str) -> list[str]:
-    """Extract bullet-list lines, stripping dreaming hint comments."""
+    """Extract bullet-list lines from a memory file."""
     entries = []
     for line in text.splitlines():
-        clean = _HINT_RE.sub("", line.strip()).strip()
-        if not clean.startswith("-"):
+        stripped = line.strip()
+        if not stripped.startswith("-") or stripped == "-":
             continue
-        if clean != "-":
-            entries.append(clean)
+        entries.append(stripped)
     return entries
 
 
@@ -110,27 +105,23 @@ def _write_atomic(path: Path, content: str) -> None:
 
 
 def _find_line(lines: list[str], substring: str) -> int:
-    """Return index of first line containing *substring* (hint-stripped), or -1."""
+    """Return index of first line containing *substring*, or -1."""
     for i, line in enumerate(lines):
-        stripped_line = _HINT_RE.sub("", line).strip()
-        if substring in stripped_line or substring in line:
+        if substring in line:
             return i
     return -1
 
 
-def apply_add(path: Path, new_text: str, hint_prefix: str = "") -> MutationResult:
-    """Append *new_text* as a new bullet line. Returns updated file content."""
+def apply_add(path: Path, new_text: str) -> MutationResult:
+    """Append *new_text* as a new bullet line."""
     raw = path.read_text(encoding="utf-8") if path.exists() else ""
-    line = f"{hint_prefix}{new_text}" if hint_prefix else new_text
     separator = "\n" if raw and not raw.endswith("\n") else ""
-    updated = raw + separator + line + "\n"
+    updated = raw + separator + new_text + "\n"
     _write_atomic(path, updated)
     return MutationResult(ok=True, new_text=updated, char_delta=len(updated) - len(raw))
 
 
-def apply_replace(
-    path: Path, old_text: str, new_text: str, hint_prefix: str = ""
-) -> MutationResult:
+def apply_replace(path: Path, old_text: str, new_text: str) -> MutationResult:
     """Replace the line containing *old_text* with *new_text*."""
     raw = path.read_text(encoding="utf-8") if path.exists() else ""
     lines = raw.splitlines(keepends=True)
@@ -140,8 +131,7 @@ def apply_replace(
             ok=False,
             error=f"old_text not found in {path.name}: {old_text!r}",
         )
-    replacement = f"{hint_prefix}{new_text}\n" if hint_prefix else f"{new_text}\n"
-    lines[idx] = replacement
+    lines[idx] = f"{new_text}\n"
     updated = "".join(lines)
     _write_atomic(path, updated)
     return MutationResult(ok=True, new_text=updated, char_delta=len(updated) - len(raw))

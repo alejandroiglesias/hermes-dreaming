@@ -35,14 +35,6 @@ def test_parse_entries_basic():
     assert entries == ["- Entry one.", "- Entry two."]
 
 
-def test_parse_entries_strips_hints():
-    text = "<!--drm:id=abc;s=0.91;st=active-->- Entry with hint.\n"
-    entries = _parse_entries(text)
-    assert len(entries) == 1
-    assert "hint" in entries[0]
-    assert "<!--drm" not in entries[0]
-
-
 def test_parse_entries_ignores_non_bullet_lines():
     text = "# Header\n- Bullet.\nNormal text.\n"
     entries = _parse_entries(text)
@@ -67,14 +59,6 @@ def test_apply_add_creates_file_if_missing(tmp_path):
     assert result.ok
     assert p.exists()
     assert "- First entry." in p.read_text(encoding="utf-8")
-
-
-def test_apply_add_with_hint_prefix(tmp_md):
-    result = apply_add(tmp_md, "- Hinted entry.", hint_prefix="<!--drm:id=abc;s=0.92;st=active-->")
-    assert result.ok
-    content = tmp_md.read_text(encoding="utf-8")
-    assert "<!--drm:id=abc" in content
-    assert "- Hinted entry." in content
 
 
 def test_apply_add_separator_when_no_trailing_newline(tmp_path):
@@ -111,13 +95,6 @@ def test_apply_replace_char_delta_is_correct(tmp_md):
     assert result.char_delta == len(new_text) - len(old_text)
 
 
-def test_apply_replace_with_hint_prefix(tmp_md):
-    result = apply_replace(tmp_md, "Entry three", "- Entry three updated.", hint_prefix="<!--drm:id=xyz;s=0.85;st=active-->")
-    assert result.ok
-    content = tmp_md.read_text(encoding="utf-8")
-    assert "<!--drm:id=xyz" in content
-
-
 # ---------------------------------------------------------------------------
 # apply_remove
 # ---------------------------------------------------------------------------
@@ -141,16 +118,6 @@ def test_apply_remove_char_delta_is_negative(tmp_md):
     result = apply_remove(tmp_md, "Entry one")
     assert result.ok
     assert result.char_delta < 0
-
-
-# ---------------------------------------------------------------------------
-# _find_line with hint-stripped content
-# ---------------------------------------------------------------------------
-
-def test_find_line_matches_through_hint():
-    lines = ["<!--drm:id=abc;s=0.90;st=active-->- Entry with hint."]
-    idx = _find_line(lines, "Entry with hint")
-    assert idx == 0
 
 
 def test_find_line_returns_minus_one_when_missing():

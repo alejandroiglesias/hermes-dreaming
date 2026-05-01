@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 """
-JSONL sidecar file read/write for candidates, decisions, promotions,
-and memory hints.
+JSONL sidecar file read/write for candidates, decisions, and promotions.
 
 All writes are append-only. Deduplication is by content hash so
 repeated runs over the same data don't accumulate duplicates.
@@ -19,7 +18,6 @@ from .paths import (
     CANDIDATES_JSONL,
     DECISIONS_JSONL,
     PROMOTIONS_JSONL,
-    MEMORY_HINTS_JSONL,
 )
 
 logger = logging.getLogger(__name__)
@@ -122,13 +120,3 @@ def append_promotion(record: dict[str, Any]) -> None:
     _append_jsonl(PROMOTIONS_JSONL, record)
 
 
-# ---------------------------------------------------------------------------
-# Memory hints (sidecar metadata for promoted entries)
-# ---------------------------------------------------------------------------
-
-def append_memory_hint(record: dict[str, Any]) -> None:
-    _append_jsonl(MEMORY_HINTS_JSONL, record)
-
-
-def read_memory_hints() -> list[dict[str, Any]]:
-    return _read_jsonl(MEMORY_HINTS_JSONL)

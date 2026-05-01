@@ -14,7 +14,6 @@ class DreamingConfig:
     max_changes_per_run: int = 3
     max_adds_per_run: int = 1
     max_new_chars_per_run: int = 250
-    write_memory_hints: bool = False
     recent_sessions_limit: int = 14
 
 

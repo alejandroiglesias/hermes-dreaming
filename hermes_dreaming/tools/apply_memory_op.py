@@ -13,7 +13,7 @@ Live mode (started via /dreaming run):
   4. Checks idempotence via promotions.jsonl hash.
   5. Validates score thresholds via scoring.validate_op.
   6. Applies mutation atomically (memory_io.apply_*).
-  7. Records to promotions.jsonl + optional inline hint.
+  7. Records to promotions.jsonl.
   8. Updates current_run counters in state.json.
 """
 
@@ -136,10 +136,6 @@ def _make_backup(run_ts: str) -> None:
 
 def _target_path(target: str) -> Path:
     return MEMORY_MD if target == "memory" else USER_MD
-
-
-def _inline_hint(op_id: str, score: float) -> str:
-    return f"<!--drm:id={op_id};s={score:.2f};st=active-->"
 
 
 def handler(params: dict[str, Any]) -> dict[str, Any]:
@@ -267,21 +263,15 @@ def _apply_live(
             _make_backup(run_id)
             run_info["backup_created"] = True
 
-        # Build optional inline hint prefix
-        hint_prefix = ""
-        if getattr(cfg, "write_memory_hints", False):
-            hint_prefix = _inline_hint(op_hash[:8], proposed.score)
-
         # Apply mutation
         result: MutationResult
         if proposed.op == "add":
-            result = apply_add(path, proposed.new_text or "", hint_prefix=hint_prefix)
+            result = apply_add(path, proposed.new_text or "")
         elif proposed.op == "replace":
             result = apply_replace(
                 path,
                 proposed.old_text or "",
                 proposed.new_text or "",
-                hint_prefix=hint_prefix,
             )
         elif proposed.op == "remove":
             result = apply_remove(path, proposed.old_text or "")
