@@ -151,10 +151,13 @@ leave MEMORY.md / USER.md.
 | Dimension | Direction | Question |
 |---|---|---|
 | future_usefulness | + | Will this improve future answers often? |
+| query_diversity | + | How many *different types* of future tasks or questions benefit from this? (breadth, not just frequency) |
 | stability | + | Is it likely to remain true? |
 | recurrence | + | Has it appeared across multiple sessions? |
+| recency | + | How recently did this signal appear? (a pattern seen last week outweighs one from six months ago with no reinforcement) |
 | explicitness | + | Did the user state it directly? |
 | correction_signal | + | Did the user correct the assistant? |
+| actionability | + | Will knowing this change what the assistant says or does? (pure context that alters no response is low-value regardless of other scores) |
 | compression_value | + | Does it compactly summarise many observations? |
 | character_cost | − | How much prompt budget will it consume? |
 | duplication | − | Is it already covered in memory? |
@@ -167,7 +170,7 @@ leave MEMORY.md / USER.md.
 
 **Operation rules:**
 - Prefer: no-op > replace/merge > remove > add
-- `add`: only if score ≥ 0.88 AND the entry would improve almost every future session
+- `add`: only if score ≥ 0.88 AND the entry would improve almost every future session across many different task types
 - `replace`: prefer over add when a candidate updates an existing entry
 - `remove`: when an entry is clearly false, superseded, redundant, or low-value
 - Implement `merge` as a `replace` (old=first entry, new=merged canonical text)
