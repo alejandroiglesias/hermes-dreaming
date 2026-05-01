@@ -1,0 +1,7 @@
+name: hermes-dreaming
+version: "0.1.0"
+description: >
+  Background memory consolidation for Hermes.
+  Periodically curates MEMORY.md and USER.md by promoting very few new
+  memories, replacing superseded entries, merging duplicates, and removing
+  stale ones. Optimises for future usefulness per character, not recall volume.

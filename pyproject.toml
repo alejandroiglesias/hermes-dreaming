@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "hermes-dreaming"
+version = "0.1.0"
+description = "Background memory consolidation plugin for Hermes"
+requires-python = ">=3.11"
+dependencies = [
+    "filelock>=3.13",
+]
+
+[project.entry-points."hermes_agent.plugins"]
+hermes-dreaming = "hermes_dreaming"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hermes_dreaming*"]
+
+[tool.setuptools.package-data]
+hermes_dreaming = ["plugin.yaml", "prompts/*.md", "prompts/*.txt"]

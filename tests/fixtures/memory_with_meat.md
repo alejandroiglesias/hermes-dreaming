@@ -1,0 +1,3 @@
+- User likes eating meat.
+- User prefers concise answers.
+- User works in Python primarily.

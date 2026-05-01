@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+.env
+*.lock
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+hermes-dreaming-implementation-brief.md

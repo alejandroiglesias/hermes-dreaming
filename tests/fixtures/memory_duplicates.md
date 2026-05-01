@@ -1,0 +1,5 @@
+- User prefers simple tools over complex frameworks.
+- User prefers concise answers.
+- User likes simple tools for CLI tasks.
+- User tends to use simple tools rather than heavyweight solutions.
+- User works in Python primarily.
