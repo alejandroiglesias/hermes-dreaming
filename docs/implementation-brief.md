@@ -87,10 +87,12 @@ Its documented shape:
 - writes human-readable diary/reports to `DREAMS.md`;
 - uses three cooperative phases:
   - **Light**: stage recent short-term material; no durable writes.
-  - **REM**: reflect on themes/recurring ideas; no durable writes.
-  - **Deep**: score candidates and promote durable candidates to `MEMORY.md`.
+  - **Deep**: score and rank staged candidates using weighted signals; no durable writes.
+  - **REM**: consolidate — rehydrate snippets, apply threshold gates, promote to `MEMORY.md`.
 
-OpenClaw Deep phase uses weighted scoring and threshold gates such as `minScore`, `minRecallCount`, and `minUniqueQueries`. It rehydrates snippets from live daily files before writing, skips stale/deleted source snippets, and appends promoted entries to `MEMORY.md`.
+OpenClaw Deep phase uses weighted scoring and threshold gates such as `minScore`, `minRecallCount`, and `minUniqueQueries`. The following REM phase rehydrates snippets from live daily files before writing, skips stale/deleted source snippets, and appends promoted entries to `MEMORY.md`.
+
+hermes-dreaming uses the same phase names but repurposes the no-write phase: our **Deep** is a *reflective classification pass* (identify patterns, contradictions, supersessions) rather than a scoring pass — scoring is deferred to REM because Hermes' tiny memory budget makes curation judgment the core challenge, not recall-frequency statistics.
 
 ### 3.2 Hermes memory model
 
@@ -211,8 +213,7 @@ Suggested internal plugin storage:
 │   └── YYYY-MM-DDTHH-mm-ss.json
 ├── candidates.jsonl
 ├── decisions.jsonl
-├── promotions.jsonl
-└── memory_hints.jsonl
+└── promotions.jsonl    # also serves as sidecar metadata for each promoted entry
 ```
 
 `DREAMS.md` should be human-readable.
@@ -221,13 +222,12 @@ The JSONL files are machine-readable sidecars and should not be injected into th
 
 ### 6.3 Why sidecar metadata matters
 
-Because `MEMORY.md` / `USER.md` are extremely small, metadata should generally live outside the durable prompt memory.
+Because `MEMORY.md` / `USER.md` are extremely small, metadata must live outside the durable prompt memory.
 
-Inline memory hints may be useful, but they consume scarce prompt characters. Therefore:
+Inline hints consume scarce prompt characters and make memory files harder to read and edit. Therefore:
 
-- default should keep memory entries clean;
-- sidecar metadata should always be recorded;
-- optional inline hints may exist but should be disabled by default.
+- all metadata lives in sidecar JSONL files (`promotions.jsonl`, `decisions.jsonl`, etc.);
+- memory files remain clean bullet lists with no embedded metadata.
 
 ---
 
@@ -246,7 +246,6 @@ dreaming:
   enabled: true
   schedule: "0 3 * * *"
   max_changes_per_run: 3
-  write_memory_hints: false
 ```
 
 ### 7.1 Config fields
@@ -272,25 +271,6 @@ Maximum durable memory mutations in one Dreaming run.
 Default: `3`
 
 This includes additions, replacements, and removals.
-
-#### `write_memory_hints`
-
-Whether the plugin writes compact metadata inline inside `MEMORY.md` / `USER.md`.
-
-Default: `false`.
-
-When `false`, hints are stored only in sidecar files.
-
-When `true`, promoted/replaced memory entries may include compact comments.
-
-Example:
-
-```md
-<!--drm:id=250501a;s=.91;p=.88;st=active-->
-- Ale prefers simple, packaged, low-maintenance tools over custom infrastructure unless the custom route has a clear advantage.
-```
-
-The plugin should still write full metadata to sidecar storage.
 
 ---
 
@@ -346,7 +326,7 @@ Runs only the memory cleanup/consolidation part:
 - detect duplicates, contradictions, superseded entries, stale entries;
 - propose or apply compacting operations.
 
-This can be implemented as a focused subset of Deep.
+This can be implemented as a focused subset of REM.
 
 ### 8.2 CLI commands
 
@@ -363,7 +343,7 @@ hermes dreaming compact
 
 ## 9. Dreaming Phases
 
-The plugin should preserve the conceptual OpenClaw phase model, but adapt Deep to Hermes' small memory.
+The plugin should preserve the conceptual OpenClaw phase model, but adapt REM to Hermes' small memory.
 
 ### 9.1 Light Phase — stage signals
 
@@ -403,7 +383,7 @@ Candidate categories:
 
 Light should be cheap and conservative.
 
-### 9.2 REM Phase — reflect on patterns
+### 9.2 Deep Phase — reflect on patterns
 
 Purpose:
 
@@ -413,15 +393,15 @@ Purpose:
 - distinguish durable preferences from session-specific details;
 - identify facts better suited to skills or session history.
 
-REM does not write durable memory.
+Deep does not write durable memory.
 
 Outputs:
 
 - reflective summaries in `DREAMS.md`;
-- reinforcement signals for Deep;
+- reinforcement signals for REM;
 - suggested canonical phrasings.
 
-REM should ask:
+Deep should ask:
 
 ```text
 What did we learn that may still matter in a month?
@@ -430,13 +410,13 @@ What should remain only in session history?
 What belongs in a skill rather than memory?
 ```
 
-### 9.3 Deep Phase — mutate premium memory
+### 9.3 REM Phase — mutate premium memory
 
 Purpose:
 
 - decide what enters, leaves, or changes in `MEMORY.md` / `USER.md`.
 
-Deep is the only phase allowed to mutate durable memory.
+REM is the only phase allowed to mutate durable memory.
 
 Allowed operations:
 
@@ -444,14 +424,14 @@ Allowed operations:
 - `replace`
 - `remove`
 
-Deep should strongly prefer:
+REM should strongly prefer:
 
 1. no-op;
 2. replace/merge;
 3. remove obsolete entries;
 4. add new entries only when truly premium.
 
-Deep should not behave like a nightly append process.
+REM should not behave like a nightly append process.
 
 ---
 
@@ -459,7 +439,7 @@ Deep should not behave like a nightly append process.
 
 Hermes durable memory is always prompt-visible and scarce.
 
-Deep should maximize:
+REM should maximize:
 
 ```text
 future usefulness per character
@@ -613,10 +593,13 @@ The exact weights can be adjusted, but the plugin should score candidates using 
 ```text
 score =
   future_usefulness
++ query_diversity
 + stability
 + recurrence
++ recency
 + explicitness
 + correction_signal
++ actionability
 + compression_value
 - character_cost
 - duplication
@@ -630,6 +613,10 @@ score =
 
 Will this improve future answers often?
 
+#### `query_diversity`
+
+How many *different types* of future tasks or questions benefit from this? Breadth, not just frequency — a preference that helps across coding, writing, and planning is more valuable than one that only applies to a narrow task type.
+
 #### `stability`
 
 Is it likely to remain true?
@@ -637,6 +624,10 @@ Is it likely to remain true?
 #### `recurrence`
 
 Has it appeared across multiple sessions/turns?
+
+#### `recency`
+
+How recently did this signal appear? A pattern seen last week outweighs one from six months ago with no reinforcement.
 
 #### `explicitness`
 
@@ -647,6 +638,10 @@ Did the user say it directly?
 Did the user correct the assistant or clarify a preference?
 
 Corrections should be strong signals.
+
+#### `actionability`
+
+Will knowing this change what the assistant says or does? Pure context that alters no response is low-value regardless of other scores.
 
 #### `compression_value`
 
@@ -706,97 +701,54 @@ If a run has more candidates, prioritize:
 
 ---
 
-## 13. Memory Hints
+## 13. Promotion Sidecar Metadata
 
 ### 13.1 Purpose
 
-Memory hints exist to help future consolidation.
+Every applied memory operation is recorded in `promotions.jsonl` to support future consolidation runs. This sidecar file helps the plugin detect:
 
-They should help the plugin and Hermes decide:
+- what was promoted by Dreaming and when;
+- what is potentially superseded by a newer operation;
+- which operations have already been applied (idempotence guard via hash).
 
-- what is current;
-- what is superseded;
-- what is low-value;
-- what was promoted by Dreaming;
-- what has high/low retrieval value;
-- what sources support a memory.
+### 13.2 Sidecar-only
 
-### 13.2 Default behavior
-
-Default:
-
-```yaml
-write_memory_hints: false
-```
-
-Full hints should be stored in sidecar files, not inline.
+All metadata lives in sidecar files — never inline inside `MEMORY.md` / `USER.md`.
 
 Reason: Hermes memory is tiny and inline metadata consumes prompt budget.
 
-### 13.3 Sidecar hint schema
+`MEMORY.md` and `USER.md` must remain clean bullet lists.
 
-Example JSONL entry:
+### 13.3 `promotions.jsonl` schema
+
+Example entry written after each applied operation:
 
 ```json
 {
-  "id": "drm_20260501_001",
+  "hash": "a1b2c3d4e5f6",
+  "op": "replace",
   "target": "user",
-  "text": "Ale prefers simple, packaged, low-maintenance tools over custom infrastructure unless the custom route has a clear advantage.",
-  "status": "active",
-  "retrieval_priority": 0.92,
+  "old_text": "User likes eating meat.",
+  "new_text": "User currently follows a vegetarian diet.",
+  "reason": "Explicit dietary change supersedes older entry.",
+  "sources": ["session:abc123"],
   "score": 0.91,
+  "supersession_confidence": 0.95,
+  "status": "active",
   "promoted_at": "2026-05-01T03:00:00Z",
-  "last_seen": "2026-05-01T03:00:00Z",
-  "recall_count": 4,
-  "sources": ["session:abc123", "session:def456"],
-  "operation": "add"
+  "run_id": "2026-05-01T03:00:00Z"
 }
 ```
 
 ### 13.4 Allowed statuses
 
-Use a small vocabulary:
-
 ```text
-active
-stale
-superseded
-archived
-removed
+active       — still current and useful
+stale        — possibly outdated, not clearly replaced
+superseded   — replaced by a newer memory
+archived     — historical context; removed from premium memory
+removed      — removed from durable memory by Dreaming
 ```
-
-#### `active`
-
-Still current and useful.
-
-#### `stale`
-
-Possibly outdated or unused, but not clearly replaced.
-
-#### `superseded`
-
-Replaced by a newer/better memory.
-
-#### `archived`
-
-Kept for historical/audit context in sidecar, not premium memory.
-
-#### `removed`
-
-Removed from durable memory by Dreaming.
-
-### 13.5 Inline hints
-
-If `write_memory_hints: true`, inline hints should be compact.
-
-Example:
-
-```md
-<!--drm:id=250501a;s=.91;p=.92;st=active-->
-- Ale prefers simple, packaged, low-maintenance tools over custom infrastructure unless the custom route has a clear advantage.
-```
-
-Do not write verbose YAML/JSON comments inside `MEMORY.md`.
 
 ---
 
@@ -818,13 +770,13 @@ Suggested format:
 - Staged 12 candidates.
 - Deduped 4 repeats.
 
-### REM Sleep
+### Deep Sleep
 Recurring themes:
 - Preference for simple packaged systems.
 - Concern about background token costs.
 - Interest in premium-memory consolidation.
 
-### Deep Sleep
+### REM Sleep
 Memory operations:
 1. REPLACE user memory
    - Old: Ale is considering OpenClaw as primary assistant.
@@ -1023,7 +975,7 @@ Acceptance:
 - no durable memory writes;
 - staged candidates include type, text, sources, confidence.
 
-### Phase 4 — REM phase
+### Phase 4 — Deep phase
 
 Deliver:
 
@@ -1031,14 +983,14 @@ Deliver:
 - contradiction detection against current memory;
 - supersession detection;
 - skill-vs-memory classification;
-- REM section in `DREAMS.md`.
+- Deep section in `DREAMS.md`.
 
 Acceptance:
 
 - no durable memory writes;
 - outputs are useful and readable.
 
-### Phase 5 — Deep phase review
+### Phase 5 — REM phase review
 
 Deliver:
 
@@ -1055,7 +1007,7 @@ Acceptance:
 - no durable memory writes in review mode;
 - proposals include source, score, reason, old/new text.
 
-### Phase 6 — Deep phase apply
+### Phase 6 — REM phase apply
 
 Deliver:
 
@@ -1085,18 +1037,17 @@ Acceptance:
 - run result is visible in configured output/logs;
 - failures are logged.
 
-### Phase 8 — Optional memory hints
+### Phase 8 — Sidecar metadata only
 
 Deliver:
 
-- sidecar hints always;
-- inline hints only if `write_memory_hints: true`;
-- compact inline format.
+- full promotion metadata written to `promotions.jsonl` on every applied operation;
+- no inline metadata in `MEMORY.md` / `USER.md` — memory files stay clean bullet lists.
 
 Acceptance:
 
-- inline hints do not exceed compact format;
-- default memory stays clean.
+- `promotions.jsonl` contains complete audit trail for each operation;
+- memory files contain no hint comments or embedded metadata.
 
 ---
 
@@ -1122,7 +1073,7 @@ Return JSON candidates with:
 - why_not_ephemeral
 ```
 
-### 19.2 REM reflection prompt
+### 19.2 Deep reflection prompt
 
 ```text
 You are reflecting on staged memory candidates.
@@ -1139,7 +1090,7 @@ Do not propose verbose memories.
 Prefer compact canonical phrasing.
 ```
 
-### 19.3 Deep scoring prompt
+### 19.3 REM scoring prompt
 
 ```text
 You are deciding whether to mutate Hermes premium memory.

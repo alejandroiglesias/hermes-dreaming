@@ -4,7 +4,7 @@ from __future__ import annotations
 Build the orchestration prompt returned by /dreaming run and /dreaming review.
 
 The prompt is returned to the agent as the command result.
-The agent then drives the full Light → REM → Deep cycle by following
+The agent then drives the full Light → Deep → REM cycle by following
 the instructions and calling the registered dreaming_* tools.
 """
 
@@ -72,8 +72,8 @@ The Light Sleep markdown should summarise:
 - the types of candidates found (no verbose details)
 """
 
-_REM_INSTRUCTIONS = """\
-## Phase 2 — REM Sleep (reflection)
+_DEEP_INSTRUCTIONS = """\
+## Phase 2 — Deep Sleep (reflection)
 
 Reflect on the candidates you just staged in the Light phase.
 You have the current MEMORY.md and USER.md entries above for comparison.
@@ -112,26 +112,26 @@ If you need to re-read staged candidates, call `dreaming_get_state`.
    For `promote`, `supersedes_memory_entry`, `merge_with_existing`:
    provide `target` — "memory" or "user".
 
-5. **Ask the key REM questions:**
+5. **Ask the key Deep questions:**
    - What did we learn that may still matter in a month?
    - What older memory does any candidate update or replace?
    - What belongs in a skill rather than premium memory?
    - What should remain only in session history?
 
 After completing reflection, call:
-  `dreaming_record_decisions(phase="REM", decisions=[...], themes=[...], contradictions=[...])`
+  `dreaming_record_decisions(phase="Deep", decisions=[...], themes=[...], contradictions=[...])`
 
-Then write the REM Sleep section:
-  `dreaming_write_dream_report(section="REM Sleep", markdown="...")`
+Then write the Deep Sleep section:
+  `dreaming_write_dream_report(section="Deep Sleep", markdown="...")`
 
-The REM Sleep markdown should include:
+The Deep Sleep markdown should include:
 - Recurring themes found (1–5 labels)
 - Any contradictions or supersessions detected
 - Brief tally of decisions by type (e.g. "3 promote, 5 reject_ephemeral, 1 supersedes")
 - No verbose per-candidate breakdown
 """
 
-def _deep_instructions(dry_run: bool, thresholds: str) -> str:
+def _rem_instructions(dry_run: bool, thresholds: str) -> str:
     mode_note = (
         "> **DRY-RUN**: `dreaming_apply_memory_op` will record proposals only. "
         "No files will change.\n\n"
@@ -139,10 +139,10 @@ def _deep_instructions(dry_run: bool, thresholds: str) -> str:
         else "> **LIVE MODE**: `dreaming_apply_memory_op` will mutate MEMORY.md / USER.md.\n\n"
     )
     return f"""\
-## Phase 3 — Deep Sleep (scoring and memory operations)
+## Phase 3 — REM Sleep (scoring and memory operations)
 
 {mode_note}\
-You are deciding which REM-phase `promote`, `supersedes_memory_entry`, \
+You are deciding which Deep-phase `promote`, `supersedes_memory_entry`, \
 `merge_with_existing`, and `remove_existing` decisions actually enter or \
 leave MEMORY.md / USER.md.
 
@@ -181,10 +181,10 @@ leave MEMORY.md / USER.md.
 The tool enforces thresholds and run limits. It will reject operations that \
 do not pass the gates and return an `error` field explaining why.
 
-After all operations, write the Deep Sleep section:
-  `dreaming_write_dream_report(section="Deep Sleep", markdown="...")`
+After all operations, write the REM Sleep section:
+  `dreaming_write_dream_report(section="REM Sleep", markdown="...")`
 
-The Deep Sleep markdown should list each proposed/applied operation as:
+The REM Sleep markdown should list each proposed/applied operation as:
   1. `OP target` — old: "..." → new: "..." — score: X.XX — reason: ...
 
 And list each rejected candidate with the rejection reason.
@@ -207,8 +207,8 @@ _TOOLS = """\
 |---|---|
 | `dreaming_get_state` | Re-read memory + sessions + prior candidates if needed |
 | `dreaming_stage_candidates(candidates)` | After Light extraction |
-| `dreaming_record_decisions(phase, decisions, themes, contradictions)` | After REM; again after Deep with final outcomes |
-| `dreaming_apply_memory_op(op, target, ...)` | Once per operation during Deep |
+| `dreaming_record_decisions(phase, decisions, themes, contradictions)` | After Deep; again after REM with final outcomes |
+| `dreaming_apply_memory_op(op, target, ...)` | Once per operation during REM |
 | `dreaming_write_dream_report(section, markdown)` | After each phase and for Summary |
 | `dreaming_finalize_run(success, dry_run, ...)` | At the very end |
 """
@@ -217,8 +217,8 @@ _SEQUENCE = """\
 ## Execution sequence
 
 1. **Light Sleep** — extract candidates → `dreaming_stage_candidates` → `dreaming_write_dream_report("Light Sleep", ...)`
-2. **REM Sleep** — reflect on candidates vs memory → `dreaming_record_decisions(phase="REM", decisions=[...], themes=[...], contradictions=[...])` → `dreaming_write_dream_report("REM Sleep", ...)`
-3. **Deep Sleep** — score REM `promote`/`supersedes`/`merge`/`remove` decisions → `dreaming_apply_memory_op(...)` for each passing operation → `dreaming_record_decisions(phase="Deep", decisions=[...])` → `dreaming_write_dream_report("Deep Sleep", ...)`
+2. **Deep Sleep** — reflect on candidates vs memory → `dreaming_record_decisions(phase="Deep", decisions=[...], themes=[...], contradictions=[...])` → `dreaming_write_dream_report("Deep Sleep", ...)`
+3. **REM Sleep** — score Deep `promote`/`supersedes`/`merge`/`remove` decisions → `dreaming_apply_memory_op(...)` for each passing operation → `dreaming_record_decisions(phase="REM", decisions=[...])` → `dreaming_write_dream_report("REM Sleep", ...)`
 4. `dreaming_write_dream_report("Summary", ...)` — one short paragraph: N sessions scanned, N candidates staged, N ops applied/proposed, N rejected.
 5. `dreaming_finalize_run(success=true, dry_run={dry_run}, candidates_staged=N, candidates_rejected=M, changes_applied=K)`
 """
@@ -281,8 +281,8 @@ def build(dry_run: bool = False) -> str:
 
     # Phase instructions
     sections.append(_LIGHT_INSTRUCTIONS)
-    sections.append(_REM_INSTRUCTIONS)
-    sections.append(_deep_instructions(dry_run, thresholds_for_prompt()))
+    sections.append(_DEEP_INSTRUCTIONS)
+    sections.append(_rem_instructions(dry_run, thresholds_for_prompt()))
     sections.append(_SAFETY)
     sections.append(_TOOLS)
     sections.append(

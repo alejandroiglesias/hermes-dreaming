@@ -95,7 +95,7 @@ def append_candidates(candidates: list[dict[str, Any]], run_id: str) -> tuple[in
 
 
 # ---------------------------------------------------------------------------
-# Decisions (REM/Deep rejections + proposals)
+# Decisions (Deep/REM rejections + proposals)
 # ---------------------------------------------------------------------------
 
 def append_decisions(decisions: list[dict[str, Any]], run_id: str) -> None:

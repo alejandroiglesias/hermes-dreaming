@@ -38,7 +38,7 @@ SCHEMA = {
             },
             "candidates_rejected": {
                 "type": "integer",
-                "description": "Number of candidates rejected by REM/Deep scoring.",
+                "description": "Number of candidates rejected by Deep/REM scoring.",
             },
             "notes": {
                 "type": "string",

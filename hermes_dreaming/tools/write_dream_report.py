@@ -15,15 +15,15 @@ SCHEMA = {
     "name": "dreaming_write_dream_report",
     "description": (
         "Append a section to the DREAMS.md audit diary. "
-        "Call once per phase: after Light, after REM, after Deep, and for the Summary. "
-        "The section name must be one of: 'Light Sleep', 'REM Sleep', 'Deep Sleep', 'Summary'."
+        "Call once per phase: after Light, after Deep, after REM, and for the Summary. "
+        "The section name must be one of: 'Light Sleep', 'Deep Sleep', 'REM Sleep', 'Summary'."
     ),
     "parameters": {
         "type": "object",
         "properties": {
             "section": {
                 "type": "string",
-                "enum": ["Light Sleep", "REM Sleep", "Deep Sleep", "Summary"],
+                "enum": ["Light Sleep", "Deep Sleep", "REM Sleep", "Summary"],
                 "description": "Which section of the dream report to write.",
             },
             "markdown": {

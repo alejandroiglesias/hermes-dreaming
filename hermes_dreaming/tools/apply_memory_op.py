@@ -97,7 +97,7 @@ SCHEMA = {
             },
             "score": {
                 "type": "number",
-                "description": "Composite future-usefulness score (0.0–1.0) from Deep scoring.",
+                "description": "Composite future-usefulness score (0.0–1.0) from REM scoring.",
             },
             "supersession_confidence": {
                 "type": "number",
@@ -208,7 +208,7 @@ def handler(params: dict[str, Any]) -> dict[str, Any]:
             "score": score,
             "supersession_confidence": supersession_confidence,
             "decision": "proposed",
-            "phase": "Deep",
+            "phase": "REM",
         }], run_id=run_id)
         return {
             "applied": False,
@@ -352,7 +352,7 @@ def _apply_live(
             "score": proposed.score,
             "supersession_confidence": proposed.supersession_confidence,
             "decision": "applied",
-            "phase": "Deep",
+            "phase": "REM",
         }], run_id=run_id)
 
     logger.info(

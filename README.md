@@ -9,8 +9,8 @@ Inspired by OpenClaw Dreaming, adapted to Hermes' small, always-prompt-visible m
 Hermes durable memory (`MEMORY.md` ≈2,200 chars, `USER.md` ≈1,375 chars) is scarce and injected into every session prompt. `hermes-dreaming` runs a periodic three-phase consolidation cycle:
 
 - **Light** — scans recent sessions for candidate facts/preferences
-- **REM** — identifies patterns, contradictions, supersessions
-- **Deep** — scores candidates and applies at most a few high-confidence memory operations (`add`, `replace`, `remove`)
+- **Deep** — identifies patterns, contradictions, supersessions
+- **REM** — scores candidates and applies at most a few high-confidence memory operations (`add`, `replace`, `remove`)
 
 A successful run may produce **zero durable writes**. The goal is highest future usefulness per character, not more memories.
 
@@ -65,9 +65,8 @@ All runtime state lives in `~/.hermes/dreaming/`:
 ├── DREAMS.md           # human-readable audit diary
 ├── state.json          # last run metadata
 ├── candidates.jsonl    # staged Light-phase candidates
-├── decisions.jsonl     # all REM/Deep decisions (including rejections)
-├── promotions.jsonl    # applied memory operations
-├── memory_hints.jsonl  # sidecar metadata for each promoted entry
+├── decisions.jsonl     # all Deep/REM decisions (including rejections)
+├── promotions.jsonl    # applied memory operations (includes sidecar metadata)
 ├── runs/               # per-run JSON records
 └── backups/            # timestamped MEMORY.md / USER.md snapshots
 ```
@@ -79,7 +78,6 @@ dreaming:
   enabled: true
   schedule: "0 3 * * *"
   max_changes_per_run: 3
-  write_memory_hints: false
 ```
 
 ## Design

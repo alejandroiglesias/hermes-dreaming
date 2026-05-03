@@ -1,6 +1,6 @@
-# Deep Ranking Signals
+# REM Ranking Signals
 
-The Deep phase scores each candidate memory operation on a composite 0.0–1.0 scale before deciding whether to promote, replace, merge, or remove an entry. The score is computed holistically by the agent's LLM using the dimensions below — no fixed weights are applied, which allows contextual emphasis (a `correction_signal` on a factual error carries more weight than one on a stylistic preference).
+The REM phase scores each candidate memory operation on a composite 0.0–1.0 scale before deciding whether to promote, replace, merge, or remove an entry. The score is computed holistically by the agent's LLM using the dimensions below — no fixed weights are applied, which allows contextual emphasis (a `correction_signal` on a factual error carries more weight than one on a stylistic preference).
 
 Hard threshold gates are enforced by `dreaming_apply_memory_op` regardless of holistic score:
 
@@ -46,7 +46,7 @@ Does this entry compactly summarise many observations into one canonical fact? H
 How much prompt budget will this entry consume? Every character in `MEMORY.md` or `USER.md` has a permanent per-session token cost. Verbose entries are penalised even if their content is useful; the same information expressed more compactly scores better.
 
 ### `duplication`
-Is this already covered by an existing memory entry? Partial or full overlap with current memory is a strong rejection signal. The Deep phase should prefer `replace` or `merge` over `add` when any existing entry covers the same ground.
+Is this already covered by an existing memory entry? Partial or full overlap with current memory is a strong rejection signal. The REM phase should prefer `replace` or `merge` over `add` when any existing entry covers the same ground.
 
 ### `volatility`
 Is this memory likely to change soon? High-volatility observations (current project status, temporary constraints, in-progress decisions) belong in session history, not durable memory. Volatility is the inverse of stability.

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-dreaming_record_decisions — REM and Deep phase tool.
+dreaming_record_decisions — Deep and REM phase tool.
 
 Records per-candidate decisions (promote, reject, supersedes, skill_candidate)
 to decisions.jsonl for audit. Does not mutate durable memory.
@@ -15,17 +15,17 @@ from ..state import read as read_state
 SCHEMA = {
     "name": "dreaming_record_decisions",
     "description": (
-        "Record REM-phase reflections and Deep-phase scoring decisions for each "
+        "Record Deep-phase reflections and REM-phase scoring decisions for each "
         "staged candidate. Does NOT mutate MEMORY.md or USER.md. "
-        "Call once after REM reflection with all per-candidate decisions, "
-        "and again after Deep scoring with final outcomes."
+        "Call once after Deep reflection with all per-candidate decisions, "
+        "and again after REM scoring with final outcomes."
     ),
     "parameters": {
         "type": "object",
         "properties": {
             "phase": {
                 "type": "string",
-                "enum": ["REM", "Deep"],
+                "enum": ["Deep", "REM"],
                 "description": "Which phase these decisions come from.",
             },
             "decisions": {
@@ -85,12 +85,12 @@ SCHEMA = {
                         },
                         "score": {
                             "type": "number",
-                            "description": "0.0–1.0 composite usefulness score (Deep phase).",
+                            "description": "0.0–1.0 composite usefulness score (REM phase).",
                         },
                         "target": {
                             "type": "string",
                             "enum": ["memory", "user"],
-                            "description": "Which file this entry belongs in (Deep phase).",
+                            "description": "Which file this entry belongs in (REM phase).",
                         },
                     },
                     "required": ["candidate_text", "decision", "reason"],
@@ -100,7 +100,7 @@ SCHEMA = {
                 "type": "array",
                 "items": {"type": "string"},
                 "description": (
-                    "REM only: recurring themes identified across the staged candidates "
+                    "Deep only: recurring themes identified across the staged candidates "
                     "and recent sessions. Include 1–5 brief theme labels."
                 ),
             },
@@ -108,7 +108,7 @@ SCHEMA = {
                 "type": "array",
                 "items": {"type": "string"},
                 "description": (
-                    "REM only: contradictions found between candidates and existing "
+                    "Deep only: contradictions found between candidates and existing "
                     "memory entries. Each item is a one-sentence description."
                 ),
             },
@@ -119,7 +119,7 @@ SCHEMA = {
 
 
 def handler(params: dict[str, Any]) -> dict[str, Any]:
-    phase = params.get("phase", "REM")
+    phase = params.get("phase", "Deep")
     decisions = params.get("decisions", [])
     themes = params.get("themes", [])
     contradictions = params.get("contradictions", [])

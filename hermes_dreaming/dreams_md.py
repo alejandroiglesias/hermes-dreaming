@@ -10,10 +10,10 @@ Format (brief §14):
   ### Light Sleep
   ...
 
-  ### REM Sleep
+  ### Deep Sleep
   ...
 
-  ### Deep Sleep
+  ### REM Sleep
   ...
 
   ### Summary
@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 
 from .paths import DREAMS_MD
 
-_KNOWN_SECTIONS = ("Light Sleep", "REM Sleep", "Deep Sleep", "Summary")
+_KNOWN_SECTIONS = ("Light Sleep", "Deep Sleep", "REM Sleep", "Summary")
 
 
 def _now_header(dry_run: bool) -> str:
@@ -43,7 +43,7 @@ def open_run(dry_run: bool = False) -> None:
 
 
 def write_section(section: str, markdown: str) -> None:
-    """Append a named section (Light Sleep / REM Sleep / Deep Sleep / Summary)."""
+    """Append a named section (Light Sleep / Deep Sleep / REM Sleep / Summary)."""
     if section not in _KNOWN_SECTIONS:
         raise ValueError(
             f"Unknown section {section!r}. Use one of: {', '.join(_KNOWN_SECTIONS)}"

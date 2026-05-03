@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 # Phase 1 stub — full implementation in Phase 2+.
-# Runs a focused Deep-only cycle: merge duplicates and remove obsolete entries.
+# Runs a focused REM-only cycle: merge duplicates and remove obsolete entries.
 # Does not add new entries.
 
 

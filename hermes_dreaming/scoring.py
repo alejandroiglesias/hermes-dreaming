@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-Scoring thresholds and run-level limits for the Deep phase (brief §12).
+Scoring thresholds and run-level limits for the REM phase (brief §12).
 
 The agent computes scores using its own LLM judgement.
 This module is the authoritative source of threshold values that:

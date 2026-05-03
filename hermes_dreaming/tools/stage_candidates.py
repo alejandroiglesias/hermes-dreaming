@@ -15,7 +15,7 @@ from ..state import read as read_state
 SCHEMA = {
     "name": "dreaming_stage_candidates",
     "description": (
-        "Stage Light-phase candidate memories for later REM reflection and Deep "
+        "Stage Light-phase candidate memories for later Deep reflection and REM "
         "scoring. Each candidate must include at minimum: type, candidate_text, "
         "confidence, and sources. Duplicates (by content hash) are silently skipped. "
         "Call this once per Light phase with all extracted candidates."

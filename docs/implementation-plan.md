@@ -8,7 +8,7 @@ Key constraint from the brief: optimize **future usefulness per character**, not
 
 This plan reflects three confirmed decisions:
 
-1. **Agent-driven reasoning** — a cron-scheduled fresh Hermes session runs `/dreaming run`; the agent's own LLM does Light/REM/Deep reasoning and calls plugin helper tools. The plugin makes no direct LLM calls.
+1. **Agent-driven reasoning** — a cron-scheduled fresh Hermes session runs `/dreaming run`; the agent's own LLM does Light/Deep/REM reasoning and calls plugin helper tools. The plugin makes no direct LLM calls.
 2. **Full 8-phase delivery** — matching brief §18, but shipped phase-by-phase.
 3. **Editable Python package in this repo** — installed into Hermes via `pip install -e .` and the `hermes_agent.plugins` entry point.
 
@@ -36,10 +36,10 @@ hermes-dreaming/
 │   ├── paths.py                   # ~/.hermes/dreaming/* path helpers
 │   ├── state.py                   # state.json + runs/ read/write
 │   ├── memory_io.py               # MEMORY.md / USER.md read, parse, mutate, backup, filelock
-│   ├── sidecar.py                 # candidates / decisions / promotions / memory_hints JSONL
+│   ├── sidecar.py                 # candidates / decisions / promotions JSONL
 │   ├── dreams_md.py               # DREAMS.md section writer
 │   ├── session_reader.py          # recent sessions via Hermes session APIs (with safe fallback)
-│   ├── orchestration.py           # builds the Light/REM/Deep prompt returned by /dreaming run
+│   ├── orchestration.py           # builds the Light/Deep/REM prompt returned by /dreaming run
 │   ├── scoring.py                 # canonical score/threshold helpers (brief §12)
 │   ├── tools/
 │   │   ├── get_state.py           # dreaming_get_state
@@ -54,7 +54,7 @@ hermes-dreaming/
 │   │   ├── status.py              # /dreaming status
 │   │   └── compact.py             # /dreaming compact
 │   ├── cli.py                     # hermes dreaming <subcmd> + install-cron helper
-│   └── prompts/                   # Light/REM/Deep prompt templates (brief §19)
+│   └── prompts/                   # Light/Deep/REM prompt templates (brief §19)
 └── tests/
     ├── test_memory_io.py
     ├── test_scoring.py
@@ -73,8 +73,7 @@ Runtime state (created on first run, never committed):
 ├── state.json
 ├── candidates.jsonl
 ├── decisions.jsonl
-├── promotions.jsonl
-├── memory_hints.jsonl
+├── promotions.jsonl    # also serves as sidecar metadata for each promoted entry
 ├── runs/<ISO_TS>.json
 └── backups/<ISO_TS>/{MEMORY.md,USER.md}
 ```
@@ -87,17 +86,17 @@ Runtime state (created on first run, never committed):
 | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
 | `dreaming_get_state`                                                                 | Returns current `MEMORY.md` / `USER.md` (with byte counts and free capacity), prior staged candidates, last run summary, recent session digests.                                                                                                                                          | no                |
 | `dreaming_stage_candidates(candidates[])`                                            | Appends Light-phase candidates to `candidates.jsonl` (with hash for idempotence).                                                                                                                                                                                                         | no (sidecar only) |
-| `dreaming_record_decisions(decisions[])`                                             | Records REM/Deep decisions (including rejections) for audit.                                                                                                                                                                                                                              | no (sidecar only) |
-| `dreaming_apply_memory_op(op, target, old_text?, new_text?, reason, sources, score)` | Sole tool that mutates `MEMORY.md`/`USER.md`. Creates backup (once per run), enforces `max_changes_per_run`/`max_adds_per_run`/`max_new_chars_per_run`, refuses duplicates by hash, writes to `promotions.jsonl` and optional inline hint. Errors loudly when in `review` (dry-run) mode. | yes (gated)       |
-| `dreaming_write_dream_report(section, markdown)`                                     | Appends to today's `DREAMS.md` entry under `Light Sleep` / `REM Sleep` / `Deep Sleep` / `Summary`.                                                                                                                                                                                        | no                |
+| `dreaming_record_decisions(decisions[])`                                             | Records Deep/REM decisions (including rejections) for audit.                                                                                                                                                                                                                              | no (sidecar only) |
+| `dreaming_apply_memory_op(op, target, old_text?, new_text?, reason, sources, score)` | Sole tool that mutates `MEMORY.md`/`USER.md`. Creates backup (once per run), enforces `max_changes_per_run`/`max_adds_per_run`/`max_new_chars_per_run`, refuses duplicates by hash, writes to `promotions.jsonl`. Errors loudly when in `review` (dry-run) mode. | yes (gated)       |
+| `dreaming_write_dream_report(section, markdown)`                                     | Appends to today's `DREAMS.md` entry under `Light Sleep` / `Deep Sleep` / `REM Sleep` / `Summary`.                                                                                                                                                                                        | no                |
 | `dreaming_finalize_run(summary)`                                                     | Persists `runs/<ts>.json` and updates `state.json` (last_run, last_successful_run, change counts).                                                                                                                                                                                        | no                |
 
 **Slash commands** (registered via `ctx.register_command`):
 
-- `/dreaming run` — dry_run=False. Returns the orchestration prompt (current memory + recent sessions + Light/REM/Deep instructions + tool inventory + the brief's prompt templates from §19) so the agent can drive the cycle.
+- `/dreaming run` — dry_run=False. Returns the orchestration prompt (current memory + recent sessions + Light/Deep/REM instructions + tool inventory + the brief's prompt templates from §19) so the agent can drive the cycle.
 - `/dreaming review` — dry_run=True. Same prompt, but `dreaming_apply_memory_op` rejects mutations and only logs proposed ops to `decisions.jsonl` and `DREAMS.md`.
 - `/dreaming status` — prints last run, last successful run, staged candidate count, last memory-change summary, current MEMORY/USER usage, recent errors.
-- `/dreaming compact` — same as `run` but the orchestration prompt scopes Deep to "merge duplicates + remove obsolete entries; do not add".
+- `/dreaming compact` — same as `run` but the orchestration prompt scopes REM to "merge duplicates + remove obsolete entries; do not add".
 
 **CLI commands** (registered via `ctx.register_cli_command`):
 
@@ -118,8 +117,7 @@ Runtime state (created on first run, never committed):
 4. Rejects if candidate hash already in `promotions.jsonl` for the active session run (idempotence — brief §15.5).
 5. Performs `add` / `replace` / `remove` with substring match for `replace`/`remove` (mirroring the built-in `memory` tool semantics).
 6. Atomic write (write to tmpfile + `os.replace`).
-7. Appends to `promotions.jsonl` with full sidecar (`id`, `target`, `text`, `status`, `score`, `sources`, `operation`, timestamps).
-8. If `write_memory_hints: true`, prefixes the line with the compact `<!--drm:...-->` form from brief §13.5.
+7. Appends to `promotions.jsonl` with full sidecar (`op`, `target`, `old_text`, `new_text`, `status`, `score`, `sources`, `promoted_at`, `run_id`).
 
 `replace` is preferred over `add`; `remove` is allowed when the agent flags an entry as superseded with confidence ≥0.85 (brief §12.2).
 
@@ -132,8 +130,8 @@ Built in `orchestration.py`. Contains, in order:
 3. **Recent sessions** — N=14 most recent session digests via `session_reader`.
 4. **Phase instructions**:
    - Light: extract candidates → call `dreaming_stage_candidates` → call `dreaming_write_dream_report("Light Sleep", ...)`.
-   - REM: identify themes/contradictions → call `dreaming_record_decisions` (no mutations) → call `dreaming_write_dream_report("REM Sleep", ...)`.
-   - Deep: score candidates with brief §12 model → call `dreaming_apply_memory_op` for each promoted op → call `dreaming_write_dream_report("Deep Sleep", ...)`.
+   - Deep: identify themes/contradictions → call `dreaming_record_decisions` (no mutations) → call `dreaming_write_dream_report("Deep Sleep", ...)`.
+   - REM: score candidates with brief §12 model → call `dreaming_apply_memory_op` for each promoted op → call `dreaming_write_dream_report("REM Sleep", ...)`.
    - Finalize: call `dreaming_finalize_run`.
 5. **Hard limits & safety** — brief §15 (sensitive attributes, untrusted content, source grounding) and §12.3 (run limits).
 6. **Prompt templates** — verbatim brief §19.1, §19.2, §19.3.
@@ -147,11 +145,11 @@ The agent then drives the cycle entirely through the registered tools.
 | 1     | `pyproject.toml`, `plugin.yaml`, `__init__.py` skeleton, paths/config, stub commands, state dir creation.                            | `pip install -e .` registers plugin; `/dreaming status` prints empty state.                                   |
 | 2     | `memory_io.py` (read + capacity), `session_reader.py` (recent sessions with safe fallback to the `on_session_finalize` pointer log). | `/dreaming review` lists current memory entries and recent session digests.                                   |
 | 3     | Light: `dreaming_stage_candidates`, `dreaming_write_dream_report`, candidate hashing.                                                | `/dreaming review` produces a Light section in `DREAMS.md`; no durable writes.                                |
-| 4     | REM: `dreaming_record_decisions`, contradiction/supersession heuristics in the orchestration prompt.                                 | REM section appears in `DREAMS.md`; no durable writes.                                                        |
-| 5     | Deep review: `scoring.py` thresholds, `dreaming_apply_memory_op` in **dry-run** mode (proposes only).                                | `/dreaming review` writes a Deep proposal section with old/new/score/reason; `MEMORY.md`/`USER.md` unchanged. |
-| 6     | Deep apply: real mutations, backups, run-level limits, idempotence.                                                                  | `/dreaming run` applies ≤3 changes; repeated immediate runs are no-ops; backups created.                      |
+| 4     | Deep: `dreaming_record_decisions`, contradiction/supersession heuristics in the orchestration prompt.                                 | Deep section appears in `DREAMS.md`; no durable writes.                                                        |
+| 5     | REM review: `scoring.py` thresholds, `dreaming_apply_memory_op` in **dry-run** mode (proposes only).                                | `/dreaming review` writes a REM proposal section with old/new/score/reason; `MEMORY.md`/`USER.md` unchanged. |
+| 6     | REM apply: real mutations, backups, run-level limits, idempotence.                                                                  | `/dreaming run` applies ≤3 changes; repeated immediate runs are no-ops; backups created.                      |
 | 7     | `hermes dreaming install-cron` + docs.                                                                                               | Nightly run executes; output visible in `~/.hermes/cron/output/`; failures logged.                            |
-| 8     | Optional inline hints behind `write_memory_hints: true`.                                                                             | Inline hint format matches brief §13.5; default keeps memory clean.                                           |
+| 8     | Sidecar-only metadata in `promotions.jsonl`. Inline hints in `MEMORY.md`/`USER.md` were explicitly removed — memory files stay clean. | All promotion metadata is in `promotions.jsonl`; memory files contain no hint comments.                        |
 
 ## Critical files (for the implementer)
 

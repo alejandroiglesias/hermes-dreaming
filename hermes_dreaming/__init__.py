@@ -18,7 +18,7 @@ _HELP = """\
 /dreaming <subcommand>
 
 Subcommands:
-  run           Run a full dreaming cycle (Light → REM → Deep)
+  run           Run a full dreaming cycle (Light → Deep → REM)
   review        Dry-run: propose memory ops without applying them
   status        Show last run, candidate counts, and memory usage
   compact       Merge duplicates and remove obsolete entries (no new adds)
