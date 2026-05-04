@@ -627,20 +627,21 @@
       <!-- ─── INSTALLATION ──────────────────────────────── -->
       <section class="sec" id="installation">
         <h2>Installation</h2>
-        <p class="sec-intro">hermes-dreaming can be installed as a development symlink (recommended) or via pip into the Hermes Python environment.</p>
+        <p class="sec-intro">Install hermes-dreaming into the same Python environment that runs Hermes, then enable the plugin in your Hermes config.</p>
 
-        <h3>Development install (symlink)</h3>
-        <p>Recommended method. Changes to source take effect immediately — no reinstall needed.</p>
+        <h3>Install from PyPI</h3>
+        <p>After the package is published, install it with pip:</p>
 
         <div class="cb">
           <span class="cb-lang">bash</span>
           <button class="cp" onclick="cp(this)">Copy</button>
-<pre><span class="cm"># Symlink into Hermes user plugins directory</span>
-mkdir -p ~/.hermes/plugins
-ln -s ~/Development/hermes-dreaming/hermes_dreaming ~/.hermes/plugins/hermes-dreaming</pre>
+<pre>pip install hermes-dreaming</pre>
         </div>
 
-        <p>Then enable the plugin in <code>~/.hermes/config.yaml</code>:</p>
+        <p>If Hermes runs from a virtual environment or app-managed Python, use that environment's pip rather than your system pip.</p>
+
+        <h3>Enable the plugin</h3>
+        <p>Add hermes-dreaming to <code>~/.hermes/config.yaml</code>:</p>
 
         <div class="cb">
           <span class="cb-lang">yaml</span>
@@ -648,20 +649,6 @@ ln -s ~/Development/hermes-dreaming/hermes_dreaming ~/.hermes/plugins/hermes-dre
 <pre><span class="ky">plugins</span><span class="pu">:</span>
   <span class="ky">enabled</span><span class="pu">:</span>
     <span class="pu">-</span> <span class="str">hermes-dreaming</span></pre>
-        </div>
-
-        <div class="adm adm-info">
-          <span class="adm-icon">ℹ️</span>
-          <div><code>plugin.yaml</code> lives inside <code>hermes_dreaming/</code> alongside <code>__init__.py</code>, so Hermes discovers it automatically via the symlink.</div>
-        </div>
-
-        <h3>pip install</h3>
-        <p>To install into the Python environment that runs Hermes:</p>
-
-        <div class="cb">
-          <span class="cb-lang">bash</span>
-          <button class="cp" onclick="cp(this)">Copy</button>
-<pre>pip install -e ~/Development/hermes-dreaming</pre>
         </div>
 
         <h3>Verify</h3>
