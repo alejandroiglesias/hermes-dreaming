@@ -1,8 +1,6 @@
 # hermes-dreaming
 
-A background memory consolidation plugin for [Hermes](https://hermes-agent.nousresearch.com).
-
-Inspired by OpenClaw Dreaming, adapted to Hermes' small, always-prompt-visible memory model.
+A background memory consolidation plugin for [Hermes](https://hermes-agent.nousresearch.com), built around Hermes' small, always-prompt-visible memory model.
 
 ## What it does
 

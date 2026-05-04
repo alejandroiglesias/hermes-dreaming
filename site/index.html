@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Background memory consolidation plugin for Hermes. Curates MEMORY.md with a three-phase Light → Deep → REM cycle.">
+  <meta name="description" content="Background memory consolidation plugin for Hermes. Curates MEMORY.md with a Light → Deep → REM cycle.">
   <title>hermes-dreaming — Documentation</title>
   <script>
     (function(){var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})();
@@ -957,9 +957,9 @@ hermes dreaming install-cron  <span class="cm"># register nightly 03:00 cron job
 <span class="cm">### REM Sleep</span>
 Memory operations:
 1. REPLACE user memory
-   Old: Ale is considering OpenClaw as primary assistant.
-   New: Ale currently prefers Hermes as primary assistant.
-   Reason: newer explicit preference supersedes older evaluation.
+   Old: Ale prefers long explanatory answers by default.
+   New: Ale prefers concise answers first, with detail added when useful.
+   Reason: newer explicit preference supersedes older style guidance.
 
 Summary: 2 durable memory changes applied. 10 candidates rejected.</pre>
         </div>
@@ -969,7 +969,7 @@ Summary: 2 durable memory changes applied. 10 candidates rejected.</pre>
       <!-- ─── DESIGN ────────────────────────────────────── -->
       <section class="sec" id="design">
         <h2>Design Philosophy</h2>
-        <p class="sec-intro">hermes-dreaming ports the spirit of OpenClaw Dreaming into Hermes — adapted to a fundamentally different, much more constrained memory model.</p>
+        <p class="sec-intro">hermes-dreaming treats durable memory as scarce prompt budget: each run consolidates recent session traces into a few compact, high-signal memories, or deliberately writes nothing.</p>
 
         <div class="adm adm-note">
           <span class="adm-icon">📌</span>

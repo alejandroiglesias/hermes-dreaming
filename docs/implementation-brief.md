@@ -2,7 +2,7 @@
 
 **Project name:** `hermes-dreaming`  
 **Status:** Proposed  
-**Goal:** Build a Hermes plugin that feels like an analogue/port of OpenClaw Dreaming, adapted to Hermes' memory model.
+**Goal:** Build a Hermes plugin that consolidates recent session signals into scarce, prompt-visible durable memory.
 
 ---
 
@@ -10,11 +10,11 @@
 
 `hermes-dreaming` is a **background memory consolidation plugin for Hermes**.
 
-It is inspired by OpenClaw Dreaming, but it should not be a line-by-line clone or a new memory architecture. Its job is to bring the *spirit* of Dreaming into Hermes:
+It was originally inspired by OpenClaw Dreaming, but it should not be a line-by-line clone, a public OpenClaw comparison, or a new memory architecture. Its job is to bring a compact consolidation loop into Hermes:
 
 > **Short-term/session signals → staged candidates → reflective patterns → premium durable memory updates.**
 
-However, Hermes has a very different memory model from OpenClaw. Hermes' built-in durable memory is extremely small and always prompt-visible:
+Hermes' built-in durable memory is extremely small and always prompt-visible:
 
 - `MEMORY.md`: ~2,200 characters
 - `USER.md`: ~1,375 characters
@@ -40,7 +40,7 @@ A successful run may produce **zero durable memory writes**.
 - a general Hermes plugin, not a memory provider;
 - a scheduled/manual memory consolidation process;
 - a curatorial layer over Hermes' existing built-in memory;
-- an analogue of OpenClaw Dreaming adapted to Hermes;
+- a curatorial layer adapted to Hermes;
 - a tool for keeping `MEMORY.md` / `USER.md` compact, current, and high-signal.
 
 ### 2.2 What this plugin is not
@@ -74,25 +74,19 @@ A candidate memory should only be promoted if it is:
 
 ---
 
-## 3. Background: Hermes vs OpenClaw Memory
+## 3. Background: Hermes Memory and Prior Dreaming Systems
 
-### 3.1 OpenClaw Dreaming model
+### 3.1 Historical influence: OpenClaw Dreaming
 
-OpenClaw Dreaming is a background memory consolidation system in `memory-core`.
+OpenClaw Dreaming provided the broad inspiration: a background process that moves strong short-term signals toward durable memory while keeping the process explainable and reviewable.
 
-Its documented shape:
+For Hermes, that lineage is internal context only. Public-facing docs should explain Hermes Dreaming on its own terms:
 
-- opt-in and disabled by default;
-- writes machine state to `memory/.dreams/`;
-- writes human-readable diary/reports to `DREAMS.md`;
-- uses three cooperative phases:
-  - **Light**: stage recent short-term material; no durable writes.
-  - **Deep**: score and rank staged candidates using weighted signals; no durable writes.
-  - **REM**: consolidate — rehydrate snippets, apply threshold gates, promote to `MEMORY.md`.
+- **Light**: shallow scan of recent sessions; stage candidate signals.
+- **Deep**: quiet reflective classification; find patterns, contradictions, supersessions.
+- **REM**: integrative consolidation; score and apply a few high-confidence memory operations.
 
-OpenClaw Deep phase uses weighted scoring and threshold gates such as `minScore`, `minRecallCount`, and `minUniqueQueries`. The following REM phase rehydrates snippets from live daily files before writing, skips stale/deleted source snippets, and appends promoted entries to `MEMORY.md`.
-
-hermes-dreaming uses the same phase names but repurposes the no-write phase: our **Deep** is a *reflective classification pass* (identify patterns, contradictions, supersessions) rather than a scoring pass — scoring is deferred to REM because Hermes' tiny memory budget makes curation judgment the core challenge, not recall-frequency statistics.
+These phase names are intentionally **Hermes semantics**, not a promise to match OpenClaw internals. Hermes' tiny memory budget makes curation judgment the core challenge, not recall-frequency statistics.
 
 ### 3.2 Hermes memory model
 
@@ -106,7 +100,7 @@ Hermes already has:
 - plugin support for tools, hooks, slash commands, and CLI commands;
 - cron/scheduled tasks.
 
-Hermes durable memory is much smaller than OpenClaw-style Markdown memory and is injected into the system prompt at the start of a session. It should be treated as high-value, low-capacity prompt memory.
+Hermes durable memory is injected into the system prompt at the start of a session. It should be treated as high-value, low-capacity prompt memory.
 
 ### 3.3 The real gap
 
@@ -343,7 +337,7 @@ hermes dreaming compact
 
 ## 9. Dreaming Phases
 
-The plugin should preserve the conceptual OpenClaw phase model, but adapt REM to Hermes' small memory.
+The plugin should use a three-phase Dreaming model adapted to Hermes' small memory.
 
 ### 9.1 Light Phase — stage signals
 
@@ -524,13 +518,13 @@ Example:
 Old:
 
 ```md
-- Ale is considering OpenClaw as his primary personal assistant.
+- Ale prefers long explanatory answers by default.
 ```
 
 New:
 
 ```md
-- Ale currently prefers Hermes as his primary assistant because it is simpler and more packaged; OpenClaw remains interesting mainly for advanced memory experiments.
+- Ale prefers concise answers first, with detail added when useful.
 ```
 
 ### 11.3 Remove
@@ -779,9 +773,9 @@ Recurring themes:
 ### REM Sleep
 Memory operations:
 1. REPLACE user memory
-   - Old: Ale is considering OpenClaw as primary assistant.
-   - New: Ale currently prefers Hermes as primary assistant because it is simpler and more packaged; OpenClaw remains interesting mainly for advanced memory experiments.
-   - Reason: newer explicit preference supersedes older evaluation.
+   - Old: Ale prefers long explanatory answers by default.
+   - New: Ale prefers concise answers first, with detail added when useful.
+   - Reason: newer explicit preference supersedes older style guidance.
 
 2. ADD user memory
    - New: Ale is cost-sensitive about background agent tasks and prefers scheduled/manual runs over idle LLM activity.
@@ -789,7 +783,7 @@ Memory operations:
 
 Rejected:
 - Detailed discussion of `apply_mode` was too implementation-specific.
-- OpenClaw/QMD/Graphiti architecture details belong in session history or project docs, not premium memory.
+- Provider architecture details belong in session history or project docs, not premium memory.
 
 Summary:
 - 2 durable memory changes applied.
@@ -1283,4 +1277,4 @@ If direct file mutation is required, implement:
 
 ## 24. One-Line Summary
 
-`hermes-dreaming` should be a simple Hermes plugin that ports the spirit of OpenClaw Dreaming into Hermes by curating scarce premium memory — promoting very little, replacing what is superseded, merging what is redundant, and keeping durable prompt memory compact, current, and high-signal.
+`hermes-dreaming` should be a simple Hermes plugin that curates scarce premium memory through a Light → Deep → REM consolidation cycle — promoting very little, replacing what is superseded, merging what is redundant, and keeping durable prompt memory compact, current, and high-signal.

@@ -54,19 +54,8 @@ Is this memory likely to change soon? High-volatility observations (current proj
 ### `sensitivity`
 Does this involve sensitive personal attributes? Health information, religion, political views, precise location, credentials, and private financial details must not be promoted into durable memory. This is a near-absolute disqualifier regardless of other scores.
 
-## Relation to OpenClaw's model
+## Why holistic scoring
 
-This model was designed alongside OpenClaw's Dreaming system. The table below maps overlapping signals:
+Hermes durable memory is strictly prompt-visible, so every promoted character has a permanent cost. Fixed weights would make the scoring feel precise while hiding the real judgment: whether a compact memory will change future behavior often enough to earn that cost.
 
-| OpenClaw signal | Weight | Equivalent here |
-|---|---|---|
-| Relevance | 0.30 | `future_usefulness` |
-| Frequency | 0.24 | `recurrence` |
-| Query diversity | 0.15 | `query_diversity` |
-| Recency | 0.15 | `recency` |
-| Consolidation | 0.10 | `compression_value` |
-| Conceptual richness | 0.06 | partially `compression_value` |
-
-Signals present here but not in OpenClaw's model: `stability`, `volatility`, `explicitness`, `correction_signal`, `actionability`, `character_cost`, `duplication`, `sensitivity`. These reflect the additional conservatism required when memory is strictly prompt-visible and every character has a token cost.
-
-Unlike OpenClaw, no fixed weights are applied. The agent's LLM applies contextual weighting, which allows the relative importance of signals to shift based on the specific candidate and existing memory state.
+The agent's LLM therefore applies contextual weighting across the dimensions above. A direct user correction may dominate recurrence; a volatile project detail may be rejected even when recent; a replacement may pass with a lower score than an add because it improves memory quality without growing the file.
