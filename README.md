@@ -16,23 +16,16 @@ A successful run may produce **zero durable writes**. The goal is highest future
 
 ## Install
 
-**Development (symlink into user plugins — no pip needed):**
-
 ```bash
-mkdir -p ~/.hermes/plugins
-ln -s ~/Development/hermes-dreaming/hermes_dreaming ~/.hermes/plugins/hermes-dreaming
-# then enable in ~/.hermes/config.yaml:
-# plugins:
-#   enabled:
-#     - hermes-dreaming
+pip install hermes-dreaming
 ```
 
-`plugin.yaml` lives inside `hermes_dreaming/` alongside `__init__.py`, so Hermes discovers it automatically via the symlink.
+Then enable in `~/.hermes/config.yaml`:
 
-**Via pip (into the Python environment that runs hermes):**
-
-```bash
-pip install -e ~/Development/hermes-dreaming
+```yaml
+plugins:
+  enabled:
+    - hermes-dreaming
 ```
 
 ## Commands
