@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Background memory consolidation plugin for Hermes. Curates MEMORY.md with a Light → Deep → REM cycle.">
-  <title>hermes-dreaming — Documentation</title>
+  <title>Hermes Dreaming — Documentation</title>
   <script>
     (function(){var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})();
   </script>
@@ -13,9 +13,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary:        #8b6508;
-      --primary-dark:   #7a5800;
-      --primary-light:  #b38319;
+      --primary:        #ffd700;
+      --primary-dark:   #e6c200;
+      --primary-light:  #ffdd33;
       --bg:             #ffffff;
       --surface:        #f6f7f8;
       --surface-2:      #ebedf0;
@@ -23,8 +23,8 @@
       --text:           #1c1e21;
       --text-muted:     #606770;
       --text-light:     #8d949e;
-      --link:           #7a5800;
-      --nav-active-bg:  rgba(0,0,0,0.05);
+      --link:           #2b79b4;
+      --nav-active-bg:  rgba(255,215,0,0.08);
       --code-bg:        #f6f7f8;
       --navbar-h:       60px;
       --sidebar-w:      280px;
@@ -81,6 +81,7 @@
       border-right: 1px solid var(--border);
       height: 100%;
     }
+    .navbar-brand:hover { text-decoration: none; }
     .brand-icon {
       font-size: 20px; line-height: 1;
     }
@@ -160,8 +161,10 @@
       background: var(--nav-active-bg);
     }
     .nav-a.active {
-      color: var(--primary);
+      color: var(--text);
       background: var(--nav-active-bg);
+      border-left: 2px solid var(--primary);
+      padding-left: 14px;
       font-weight: 500;
     }
 
@@ -228,9 +231,9 @@
       transition: background .15s, color .15s, border-color .15s;
     }
     .btn-primary {
-      background: var(--primary); color: #fff;
+      background: #ffd700; color: #07070d;
     }
-    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-primary:hover { background: #e6c200; }
     .btn-secondary {
       background: var(--bg); color: var(--text-muted);
       border: 1px solid var(--border);
@@ -333,7 +336,7 @@
       padding: 3px 8px; border-radius: 4px; cursor: pointer;
       transition: border-color .12s, color .12s;
     }
-    .cp:hover { border-color: var(--primary); color: var(--primary); }
+    .cp:hover { border-color: var(--primary); color: var(--text-muted); }
     .cp.ok { color: #067d17; border-color: #067d17; }
 
     /* light syntax tokens */
@@ -341,7 +344,7 @@
     .str { color: #067d17; }           /* strings */
     .cm  { color: var(--text-light); font-style: italic; }   /* comments */
     .nm  { color: #c33900; }           /* numbers */
-    .ky  { color: var(--primary); }    /* yaml keys / json keys */
+    .ky  { color: #2b79b4; }            /* yaml keys / json keys */
     .pu  { color: var(--text-muted); } /* punctuation */
 
     /* ── admonitions / callouts ──────────────────────────── */
@@ -353,7 +356,7 @@
       margin: 20px 0;
       font-size: 14px; line-height: 1.6;
     }
-    .adm-note  { background: #fff8e6; border-color: var(--primary); color: #5a4008; }
+    .adm-note  { background: #fff8e6; border-color: var(--primary); color: var(--text); }
     .adm-info  { background: #f0f8ff; border-color: #2b90d9; color: #1a5880; }
     .adm-tip   { background: #f0faf4; border-color: #067d17; color: #0a5210; }
     .adm-warn  { background: #fff4e5; border-color: #e8670a; color: #6b3300; }
@@ -395,7 +398,7 @@
     }
     .cmd-n {
       font-family: var(--mono); font-size: 13px;
-      color: var(--primary); white-space: nowrap; min-width: 170px;
+      color: var(--text); white-space: nowrap; min-width: 170px;
       font-weight: 500;
     }
     .cmd-d { font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
@@ -422,7 +425,7 @@
       border-radius: 6px;
     }
     .cf-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
-    .cf-name { font-family: var(--mono); font-size: 14px; color: var(--primary); font-weight: 500; }
+    .cf-name { font-family: var(--mono); font-size: 14px; color: var(--text); font-weight: 500; }
     .cf-def {
       font-family: var(--mono); font-size: 11px;
       color: var(--text-muted); background: var(--bg);
@@ -489,6 +492,7 @@
     [data-theme="dark"] .phase.dp { border-left-color: #5a82e8; }
     [data-theme="dark"] .phase.dp .ph-name { color: #7898e8; }
 
+
     /* toggle button */
     .theme-toggle {
       background: none; border: 1px solid var(--border);
@@ -530,7 +534,7 @@
   <nav class="navbar">
     <a href="#overview" class="navbar-brand">
       <span class="brand-icon">🌙</span>
-      <span class="brand-name">hermes-dreaming</span>
+      <span class="brand-name">Hermes Dreaming</span>
       <span class="brand-ver">v0.1.0</span>
     </a>
     <button class="menu-btn" onclick="openMenu()">☰</button>
@@ -574,12 +578,7 @@
 
       <!-- ─── OVERVIEW ──────────────────────────────────── -->
       <section class="hero" id="overview">
-        <div class="breadcrumb">
-          <a href="https://hermes-agent.nousresearch.com/docs" target="_blank" rel="noopener">Hermes Docs</a>
-          &rsaquo; Plugins &rsaquo; hermes-dreaming
-        </div>
-
-        <h1>hermes-dreaming</h1>
+        <h1>Hermes Dreaming</h1>
 
         <p class="hero-sub">
           Background memory consolidation for
@@ -627,7 +626,7 @@
       <!-- ─── INSTALLATION ──────────────────────────────── -->
       <section class="sec" id="installation">
         <h2>Installation</h2>
-        <p class="sec-intro">Install hermes-dreaming into the same Python environment that runs Hermes, then enable the plugin in your Hermes config.</p>
+        <p class="sec-intro">Install Hermes Dreaming into the same Python environment that runs Hermes, then enable the plugin in your Hermes config.</p>
 
         <h3>Install from PyPI</h3>
         <p>After the package is published, install it with pip:</p>
@@ -672,7 +671,7 @@
       <!-- ─── COMMANDS ──────────────────────────────────── -->
       <section class="sec" id="commands">
         <h2>Commands</h2>
-        <p class="sec-intro">hermes-dreaming exposes commands as Hermes slash commands (for use within sessions) and as CLI subcommands.</p>
+        <p class="sec-intro">Hermes Dreaming exposes commands as Hermes slash commands (for use within sessions) and as CLI subcommands.</p>
 
         <h3>Slash Commands</h3>
 
@@ -956,7 +955,7 @@ Summary: 2 durable memory changes applied. 10 candidates rejected.</pre>
       <!-- ─── DESIGN ────────────────────────────────────── -->
       <section class="sec" id="design">
         <h2>Design Philosophy</h2>
-        <p class="sec-intro">hermes-dreaming treats durable memory as scarce prompt budget: each run consolidates recent session traces into a few compact, high-signal memories, or deliberately writes nothing.</p>
+        <p class="sec-intro">Hermes Dreaming treats durable memory as scarce prompt budget: each run consolidates recent session traces into a few compact, high-signal memories, or deliberately writes nothing.</p>
 
         <div class="adm adm-note">
           <span class="adm-icon">📌</span>
@@ -1002,7 +1001,7 @@ Summary: 2 durable memory changes applied. 10 candidates rejected.</pre>
         </div>
 
         <h3>Compatibility with memory providers</h3>
-        <p>hermes-dreaming coexists with any external memory provider. The intended layering:</p>
+        <p>Hermes Dreaming coexists with any external memory provider. The intended layering:</p>
         <ul>
           <li><strong>Provider</strong> (Honcho, Hindsight, etc.) — broader long-term memory</li>
           <li><strong>MEMORY.md / USER.md</strong> — always-prompt-visible premium memory</li>
