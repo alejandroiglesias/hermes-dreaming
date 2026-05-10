@@ -1,5 +1,9 @@
 # hermes-dreaming
 
+[![Security scan](https://github.com/alejandroiglesias/hermes-dreaming/actions/workflows/security.yml/badge.svg)](https://github.com/alejandroiglesias/hermes-dreaming/actions/workflows/security.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/alejandroiglesias/hermes-dreaming/badge)](https://securityscorecards.dev/viewer/?uri=github.com/alejandroiglesias/hermes-dreaming)
+[![Socket Badge](https://socket.dev/api/badge/pypi/package/hermes-dreaming)](https://socket.dev/pypi/package/hermes-dreaming)
+
 A background memory consolidation plugin for [Hermes](https://hermes-agent.nousresearch.com), built around Hermes' small, always-prompt-visible memory model.
 
 ## What it does
