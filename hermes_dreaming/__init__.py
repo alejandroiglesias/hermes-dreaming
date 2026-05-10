@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 def _check_for_update() -> None:
     try:
         current = _pkg_version("hermes-dreaming")
-        with urllib.request.urlopen(
+        with urllib.request.urlopen(  # nosec B310 - safe: HTTPS to PyPI with timeout
             "https://pypi.org/pypi/hermes-dreaming/json", timeout=3
         ) as resp:
             latest = json.loads(resp.read())["info"]["version"]

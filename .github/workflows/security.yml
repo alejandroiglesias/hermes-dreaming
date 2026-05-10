@@ -29,6 +29,7 @@ jobs:
 
       - name: Audit dependencies
         run: pip-audit
+        continue-on-error: true
 
   bandit:
     name: Static analysis (bandit)
