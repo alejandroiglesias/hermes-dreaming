@@ -77,7 +77,7 @@ SCHEMA = {
 }
 
 
-def handler(params: dict[str, Any]) -> dict[str, Any]:
+def handler(params: dict[str, Any], **_) -> dict[str, Any]:
     candidates = params.get("candidates", [])
     if not isinstance(candidates, list):
         return {"error": "'candidates' must be a list"}

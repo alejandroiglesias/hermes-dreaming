@@ -35,8 +35,38 @@ def _now_header(dry_run: bool) -> str:
     return f"\n## {ts} — Dreaming run{suffix}\n"
 
 
+def _strip_stale_stubs(text: str) -> str:
+    """Remove run headers that have no section content (### ...) following them."""
+    lines = text.splitlines(keepends=True)
+    result = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.lstrip().startswith("## ") and "— Dreaming run" in line:
+            j = i + 1
+            body: list[str] = []
+            while j < len(lines) and not (
+                lines[j].lstrip().startswith("## ") and "— Dreaming run" in lines[j]
+            ):
+                body.append(lines[j])
+                j += 1
+            if any(l.startswith("###") for l in body):
+                result.append(line)
+                result.extend(body)
+            i = j
+        else:
+            result.append(line)
+            i += 1
+    return "".join(result)
+
+
 def open_run(dry_run: bool = False) -> None:
-    """Append the dated run header to DREAMS.md."""
+    """Append the dated run header to DREAMS.md, stripping any prior stale stubs."""
+    if DREAMS_MD.exists():
+        text = DREAMS_MD.read_text(encoding="utf-8")
+        cleaned = _strip_stale_stubs(text)
+        if cleaned != text:
+            DREAMS_MD.write_text(cleaned, encoding="utf-8")
     header = _now_header(dry_run)
     with DREAMS_MD.open("a", encoding="utf-8") as f:
         f.write(header)
@@ -48,7 +78,12 @@ def write_section(section: str, markdown: str) -> None:
         raise ValueError(
             f"Unknown section {section!r}. Use one of: {', '.join(_KNOWN_SECTIONS)}"
         )
-    block = f"\n### {section}\n{markdown.strip()}\n"
+    # Strip a leading header line if the agent included one (e.g. "## Light Sleep")
+    body = markdown.strip()
+    first, _, rest = body.partition("\n")
+    if first.lstrip("#").strip().lower() == section.lower():
+        body = rest.strip()
+    block = f"\n### {section}\n{body}\n"
     with DREAMS_MD.open("a", encoding="utf-8") as f:
         f.write(block)
 

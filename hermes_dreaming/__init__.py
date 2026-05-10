@@ -7,6 +7,7 @@ Hermes calls register(ctx) once at startup to wire all tools, commands,
 CLI subcommands, and hooks.
 """
 
+import json
 import logging
 
 from .paths import ensure_dirs
@@ -32,40 +33,43 @@ Examples:
 """
 
 
-def _handle_slash(raw_args: str) -> str:
-    argv = raw_args.strip().split()
-    sub = argv[0].lower() if argv else "help"
-
-    if sub in ("help", "-h", "--help"):
-        return _HELP
-
-    if sub == "status":
-        from .commands.status import handle
-        return handle(raw_args[len("status"):].strip())
-
-    if sub == "run":
-        from .commands.run import handle
-        return handle(raw_args[len("run"):].strip())
-
-    if sub == "review":
-        from .commands.review import handle
-        return handle(raw_args[len("review"):].strip())
-
-    if sub == "compact":
-        from .commands.compact import handle
-        return handle(raw_args[len("compact"):].strip())
-
-    if sub == "install-cron":
-        from .commands.install_cron import handle
-        rest = raw_args[len("install-cron"):].strip()
-        schedule = rest if rest else None
-        return handle(schedule=schedule)
-
-    return f"Unknown subcommand '{sub}'. Try /dreaming help."
-
-
 def register(ctx) -> None:
     ensure_dirs()
+
+    def _handle_slash(raw_args: str) -> str:
+        argv = raw_args.strip().split()
+        sub = argv[0].lower() if argv else "help"
+
+        if sub in ("help", "-h", "--help"):
+            return _HELP
+
+        if sub == "status":
+            from .commands.status import handle
+            return handle(raw_args[len("status"):].strip())
+
+        if sub == "run":
+            from .commands.run import handle
+            prompt = handle(raw_args[len("run"):].strip())
+            ctx.inject_message(prompt)
+            return "Dreaming cycle started (live). Running Light → Deep → REM…"
+
+        if sub == "review":
+            from .commands.review import handle
+            prompt = handle(raw_args[len("review"):].strip())
+            ctx.inject_message(prompt)
+            return "Dreaming cycle started (dry-run). Running Light → Deep → REM…"
+
+        if sub == "compact":
+            from .commands.compact import handle
+            return handle(raw_args[len("compact"):].strip())
+
+        if sub == "install-cron":
+            from .commands.install_cron import handle
+            rest = raw_args[len("install-cron"):].strip()
+            schedule = rest if rest else None
+            return handle(schedule=schedule)
+
+        return f"Unknown subcommand '{sub}'. Try /dreaming help."
 
     # --- Single slash command routed on first arg ---
     ctx.register_command(
@@ -91,12 +95,19 @@ def register(ctx) -> None:
         apply_memory_op, write_dream_report, finalize_run,
     )
 
+    def _json_handler(h):
+        def wrapped(params, **kw):
+            result = h(params, **kw)
+            return json.dumps(result, default=str) if isinstance(result, dict) else result
+        return wrapped
+
     for mod in (get_state, stage_candidates, record_decisions,
                 apply_memory_op, write_dream_report, finalize_run):
         ctx.register_tool(
             name=mod.SCHEMA["name"],
+            toolset="dreaming",
             schema=mod.SCHEMA,
-            handler=mod.handler,
+            handler=_json_handler(mod.handler),
         )
 
     # --- Lightweight session pointer hook ---

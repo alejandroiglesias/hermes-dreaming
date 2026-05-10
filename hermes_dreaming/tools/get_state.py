@@ -34,7 +34,7 @@ SCHEMA = {
 }
 
 
-def handler(_params: dict[str, Any]) -> dict[str, Any]:
+def handler(_params: dict[str, Any], **_) -> dict[str, Any]:
     cfg = load_config()
     files = read_both()
     sessions = list_recent(limit=cfg.recent_sessions_limit)

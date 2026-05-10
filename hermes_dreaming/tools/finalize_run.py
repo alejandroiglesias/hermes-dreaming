@@ -50,7 +50,7 @@ SCHEMA = {
 }
 
 
-def handler(params: dict[str, Any]) -> dict[str, Any]:
+def handler(params: dict[str, Any], **_) -> dict[str, Any]:
     state = read_state()
     run_ts = state.get("current_run", {}).get("started_at", "unknown")
 

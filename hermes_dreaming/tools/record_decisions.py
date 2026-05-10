@@ -118,7 +118,7 @@ SCHEMA = {
 }
 
 
-def handler(params: dict[str, Any]) -> dict[str, Any]:
+def handler(params: dict[str, Any], **_) -> dict[str, Any]:
     phase = params.get("phase", "Deep")
     decisions = params.get("decisions", [])
     themes = params.get("themes", [])

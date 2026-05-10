@@ -151,7 +151,7 @@ def _preview_mutation(proposed: ProposedOp, current_raw: str, path: Path) -> Mut
     return MutationResult(ok=False, error=f"unknown op: {proposed.op!r}")
 
 
-def handler(params: dict[str, Any]) -> dict[str, Any]:
+def handler(params: dict[str, Any], **_) -> dict[str, Any]:
     ensure_dirs()
     state = read_state()
     cfg = load_config()
