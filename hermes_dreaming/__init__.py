@@ -9,11 +9,31 @@ CLI subcommands, and hooks.
 
 import json
 import logging
+import threading
+import urllib.request
+from importlib.metadata import version as _pkg_version, PackageNotFoundError
 
 from .paths import ensure_dirs
 from . import state as _state
 
 logger = logging.getLogger(__name__)
+
+
+def _check_for_update() -> None:
+    try:
+        current = _pkg_version("hermes-dreaming")
+        with urllib.request.urlopen(
+            "https://pypi.org/pypi/hermes-dreaming/json", timeout=3
+        ) as resp:
+            latest = json.loads(resp.read())["info"]["version"]
+        if latest != current:
+            logger.warning(
+                "hermes-dreaming: update available (%s → %s). "
+                "Run: pip install --upgrade hermes-dreaming",
+                current, latest,
+            )
+    except Exception:
+        pass
 
 _HELP = """\
 /dreaming <subcommand>
@@ -119,3 +139,6 @@ def register(ctx) -> None:
                 logger.debug("dreaming: on_session_end pointer failed: %s", exc)
 
     ctx.register_hook("on_session_end", _on_session_end)
+
+    # --- Background update check ---
+    threading.Thread(target=_check_for_update, daemon=True).start()
