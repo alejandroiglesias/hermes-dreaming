@@ -21,8 +21,8 @@ def register_cli(parser: argparse.ArgumentParser) -> None:
     install_p = subs.add_parser("install-cron", help="Register the nightly dreaming cron job")
     install_p.add_argument(
         "--schedule",
-        default="0 3 * * *",
-        help="Cron expression (default: '0 3 * * *')",
+        default=None,
+        help="Cron expression (default value from config: '0 3 * * *')",
     )
 
 
@@ -53,7 +53,7 @@ def handle_cli(args: argparse.Namespace) -> None:
 
     elif sub == "install-cron":
         from .commands.install_cron import handle
-        schedule = getattr(args, "schedule", "0 3 * * *")
+        schedule = getattr(args, "schedule", None)
         print(handle(schedule=schedule))
 
     else:

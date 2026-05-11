@@ -9,11 +9,10 @@ it prints the existing job details without creating a duplicate.
 """
 
 _JOB_NAME = "hermes-dreaming"
-_DEFAULT_SCHEDULE = "0 3 * * *"
 _PROMPT = "/dreaming run"
 
 
-def handle(schedule: str = _DEFAULT_SCHEDULE) -> str:
+def handle(schedule: str | None = None) -> str:
     try:
         from cron.jobs import create_job, list_jobs
     except ImportError:
@@ -24,7 +23,8 @@ def handle(schedule: str = _DEFAULT_SCHEDULE) -> str:
             "gateway mode. Start Hermes normally and retry."
         )
 
-    schedule = (schedule or _DEFAULT_SCHEDULE).strip()
+    from .. import config as _config_module
+    schedule = (schedule or _config_module.load().schedule).strip()
 
     # --- Idempotence check ---
     existing = _find_existing(list_jobs)
