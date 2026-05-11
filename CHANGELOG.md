@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.4] - 2026-05-11
+
+### Fixed
+- Update notification now says `hermes plugins update hermes-dreaming` instead of a pip command.
+- Install docs replaced with `hermes plugins install alejandroiglesias/hermes-dreaming` and `hermes plugins update hermes-dreaming` — no pip or Python path wrangling needed.
+
 ## [0.3.3] - 2026-05-11
 
 ### Fixed

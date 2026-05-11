@@ -535,7 +535,7 @@
     <a href="#overview" class="navbar-brand">
       <span class="brand-icon">🌙</span>
       <span class="brand-name">Hermes Dreaming</span>
-      <span class="brand-ver">v0.3.3</span>
+      <span class="brand-ver">v0.3.4</span>
     </a>
     <button class="menu-btn" onclick="openMenu()">☰</button>
     <div class="navbar-links">
@@ -629,16 +629,22 @@
         <h2>Installation</h2>
         <p class="sec-intro">Install Hermes Dreaming into the same Python environment that runs Hermes, then enable the plugin in your Hermes config.</p>
 
-        <h3>Install from PyPI</h3>
-        <p>After the package is published, install it with pip:</p>
+        <h3>Install</h3>
+        <p>Use the Hermes plugin manager — it handles cloning, environment setup, and enabling automatically:</p>
 
         <div class="cb">
           <span class="cb-lang">bash</span>
           <button class="cp" onclick="cp(this)">Copy</button>
-<pre>python3 -m pip install hermes-dreaming</pre>
+<pre>hermes plugins install alejandroiglesias/hermes-dreaming</pre>
         </div>
 
-        <p>If Hermes runs from a virtual environment or app-managed Python, use that environment's pip rather than your system pip.</p>
+        <p>To update later:</p>
+
+        <div class="cb">
+          <span class="cb-lang">bash</span>
+          <button class="cp" onclick="cp(this)">Copy</button>
+<pre>hermes plugins update hermes-dreaming</pre>
+        </div>
 
         <h3>Enable the plugin</h3>
         <p>Add hermes-dreaming to <code>~/.hermes/config.yaml</code>:</p>
