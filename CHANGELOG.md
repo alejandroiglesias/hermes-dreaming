@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.5] - 2026-05-11
+
+### Changed
+- Update check now queries the GitHub releases API instead of PyPI, matching how the plugin is distributed (`hermes plugins install`).
+- Removed all PyPI publishing infrastructure (`.github/workflows/publish.yml`).
+
 ## [0.3.4] - 2026-05-11
 
 ### Fixed

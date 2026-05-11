@@ -11,7 +11,7 @@ import json
 import logging
 import threading
 import urllib.request
-from importlib.metadata import version as _pkg_version, PackageNotFoundError
+from pathlib import Path
 
 from .paths import ensure_dirs
 from . import state as _state
@@ -21,11 +21,15 @@ logger = logging.getLogger(__name__)
 
 def _check_for_update(ctx) -> None:
     try:
-        current = _pkg_version("hermes-dreaming")
-        with urllib.request.urlopen(  # nosec B310 - safe: HTTPS to PyPI with timeout
-            "https://pypi.org/pypi/hermes-dreaming/json", timeout=3
+        import yaml
+        plugin_yaml = Path(__file__).parent / "plugin.yaml"
+        current = yaml.safe_load(plugin_yaml.read_text())["version"]
+        with urllib.request.urlopen(
+            "https://api.github.com/repos/alejandroiglesias/hermes-dreaming/releases/latest",
+            timeout=3,
         ) as resp:
-            latest = json.loads(resp.read())["info"]["version"]
+            tag = json.loads(resp.read())["tag_name"]  # e.g. "v0.3.5"
+        latest = tag.lstrip("v")
         if latest != current:
             msg = (
                 f"[hermes-dreaming] Update available: {current} → {latest}. "

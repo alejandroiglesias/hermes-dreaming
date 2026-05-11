@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-dreaming"
-version = "0.3.4"
+version = "0.3.5"
 description = "Background memory consolidation plugin for Hermes"
 readme = "README.md"
 license = "MIT"
@@ -19,6 +19,7 @@ dependencies = [
 Homepage = "https://github.com/alejandroiglesias/hermes-dreaming"
 Repository = "https://github.com/alejandroiglesias/hermes-dreaming"
 Documentation = "https://alejandroiglesias.github.io/hermes-dreaming/"
+Changelog = "https://github.com/alejandroiglesias/hermes-dreaming/blob/main/CHANGELOG.md"
 
 [project.entry-points."hermes_agent.plugins"]
 hermes-dreaming = "hermes_dreaming"
