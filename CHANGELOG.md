@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.1] - 2026-05-11
+
+### Fixed
+- `install-cron` now reads cron schedule from `config.yaml` instead of ignoring it and always using `0 3 * * *`
+
 ## [0.3.0] - 2026-05-10
 
 ### Added
