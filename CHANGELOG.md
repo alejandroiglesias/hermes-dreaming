@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.3] - 2026-05-11
+
+### Fixed
+- Update notification and install docs now use `python3 -m pip` instead of `pip`, and the notification shows the exact `sys.executable` path so users on venv-only setups aren't left with a broken command.
+
 ## [0.3.2] - 2026-05-11
 
 ### Fixed

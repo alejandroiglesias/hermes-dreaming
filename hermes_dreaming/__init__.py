@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 def _check_for_update(ctx) -> None:
     try:
+        import sys
         current = _pkg_version("hermes-dreaming")
         with urllib.request.urlopen(  # nosec B310 - safe: HTTPS to PyPI with timeout
             "https://pypi.org/pypi/hermes-dreaming/json", timeout=3
@@ -29,7 +30,7 @@ def _check_for_update(ctx) -> None:
         if latest != current:
             msg = (
                 f"[hermes-dreaming] Update available: {current} → {latest}. "
-                f"Run: pip install --upgrade hermes-dreaming"
+                f"Run: {sys.executable} -m pip install --upgrade hermes-dreaming"
             )
             logger.warning(msg)
             ctx.inject_message(msg)
