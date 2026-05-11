@@ -19,7 +19,7 @@ from . import state as _state
 logger = logging.getLogger(__name__)
 
 
-def _check_for_update() -> None:
+def _check_for_update(ctx) -> None:
     try:
         current = _pkg_version("hermes-dreaming")
         with urllib.request.urlopen(  # nosec B310 - safe: HTTPS to PyPI with timeout
@@ -27,11 +27,12 @@ def _check_for_update() -> None:
         ) as resp:
             latest = json.loads(resp.read())["info"]["version"]
         if latest != current:
-            logger.warning(
-                "hermes-dreaming: update available (%s → %s). "
-                "Run: pip install --upgrade hermes-dreaming",
-                current, latest,
+            msg = (
+                f"[hermes-dreaming] Update available: {current} → {latest}. "
+                f"Run: pip install --upgrade hermes-dreaming"
             )
+            logger.warning(msg)
+            ctx.inject_message(msg)
     except Exception:
         pass
 
@@ -141,4 +142,4 @@ def register(ctx) -> None:
     ctx.register_hook("on_session_end", _on_session_end)
 
     # --- Background update check ---
-    threading.Thread(target=_check_for_update, daemon=True).start()
+    threading.Thread(target=_check_for_update, args=(ctx,), daemon=True).start()

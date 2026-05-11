@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.2] - 2026-05-11
+
+### Fixed
+- Update check now surfaces via `inject_message` so the notification is visible in Hermes chat, instead of only going to the Python logger (which Hermes does not display).
+
 ## [0.3.1] - 2026-05-11
 
 ### Fixed
