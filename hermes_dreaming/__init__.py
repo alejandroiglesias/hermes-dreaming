@@ -24,7 +24,7 @@ def _check_for_update(ctx) -> None:
         import yaml
         plugin_yaml = Path(__file__).parent / "plugin.yaml"
         current = yaml.safe_load(plugin_yaml.read_text())["version"]
-        with urllib.request.urlopen(
+        with urllib.request.urlopen(  # nosec B310 - safe: HTTPS to GitHub API with timeout
             "https://api.github.com/repos/alejandroiglesias/hermes-dreaming/releases/latest",
             timeout=3,
         ) as resp:
