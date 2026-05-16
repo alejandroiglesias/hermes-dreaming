@@ -2,7 +2,7 @@
   <img src="site/hermes-dreaming.png" alt="Hermes Dreaming" width="220">
 </p>
 
-# hermes-dreaming
+# Hermes Dreaming
 
 [![Security scan](https://github.com/alejandroiglesias/hermes-dreaming/actions/workflows/security.yml/badge.svg)](https://github.com/alejandroiglesias/hermes-dreaming/actions/workflows/security.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/alejandroiglesias/hermes-dreaming/badge)](https://securityscorecards.dev/viewer/?uri=github.com/alejandroiglesias/hermes-dreaming)
@@ -12,7 +12,7 @@ A background memory consolidation plugin for [Hermes](https://hermes-agent.nousr
 
 ## What it does
 
-Hermes durable memory (`MEMORY.md` ≈2,200 chars, `USER.md` ≈1,375 chars) is scarce and injected into every session prompt. `hermes-dreaming` runs a periodic three-phase consolidation cycle:
+Hermes durable memory (`MEMORY.md` ≈2,200 chars, `USER.md` ≈1,375 chars) is scarce and injected into every session prompt. Hermes Dreaming runs a periodic three-phase consolidation cycle:
 
 - **Light** — scans recent sessions for candidate facts/preferences
 - **Deep** — identifies patterns, contradictions, supersessions
@@ -25,15 +25,7 @@ A successful run may produce **zero durable writes**. The goal is highest future
 ## Install
 
 ```bash
-pip install hermes-dreaming
-```
-
-Then enable in `~/.hermes/config.yaml`:
-
-```yaml
-plugins:
-  enabled:
-    - hermes-dreaming
+hermes plugins install alejandroiglesias/hermes-dreaming
 ```
 
 ## Commands
@@ -75,7 +67,7 @@ All runtime state lives in `~/.hermes/dreaming/`:
 ```yaml
 dreaming:
   enabled: true
-  schedule: "0 3 * * *"
+  schedule: '0 3 * * *'
   max_changes_per_run: 3
 ```
 

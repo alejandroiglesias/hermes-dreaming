@@ -1,587 +1,957 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Background memory consolidation plugin for Hermes. Curates MEMORY.md with a Light → Deep → REM cycle.">
-  <title>Hermes Dreaming — Documentation</title>
-  <script>
-    (function(){var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})();
-  </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --primary:        #ffd700;
-      --primary-dark:   #e6c200;
-      --primary-light:  #ffdd33;
-      --bg:             #ffffff;
-      --surface:        #f6f7f8;
-      --surface-2:      #ebedf0;
-      --border:         #dadde1;
-      --text:           #1c1e21;
-      --text-muted:     #606770;
-      --text-light:     #8d949e;
-      --link:           #2b79b4;
-      --nav-active-bg:  rgba(255,215,0,0.08);
-      --code-bg:        #f6f7f8;
-      --navbar-h:       60px;
-      --sidebar-w:      280px;
-      --content-max:    860px;
-      --font:           'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --mono:           'JetBrains Mono', 'Fira Code', monospace;
-    }
-
-    [data-theme="dark"] {
-      --primary:        #ffd700;
-      --primary-dark:   #e6c200;
-      --primary-light:  #ffd700;
-      --bg:             #1b1b1d;
-      --surface:        #242526;
-      --surface-2:      #333538;
-      --border:         #444950;
-      --text:           #e8e4dc;
-      --text-muted:     #dadde1;
-      --text-light:     #9c9ca0;
-      --link:           #ffd700;
-      --nav-active-bg:  rgba(255,255,255,0.05);
-      --code-bg:        #2b2d30;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: var(--font);
-      font-size: 1rem;
-      line-height: 1.65;
-      color: var(--text);
-      background: var(--bg);
-    }
-
-    /* ── navbar ──────────────────────────────────────────── */
-    .navbar {
-      position: fixed; top: 0; left: 0; right: 0;
-      height: var(--navbar-h);
-      background: var(--bg);
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center;
-      padding: 0 20px 0 0;
-      z-index: 200;
-      gap: 0;
-    }
-    .navbar-brand {
-      display: flex; align-items: center; gap: 10px;
-      padding: 0 20px;
-      text-decoration: none;
-      width: var(--sidebar-w);
-      flex-shrink: 0;
-      border-right: 1px solid var(--border);
-      height: 100%;
-    }
-    .navbar-brand:hover { text-decoration: none; }
-    .brand-icon {
-      font-size: 20px; line-height: 1;
-    }
-    .brand-name {
-      font-size: 15px; font-weight: 700;
-      color: var(--text);
-    }
-    .brand-ver {
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--text-light);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 1px 6px;
-      margin-left: 4px;
-    }
-    .navbar-links {
-      display: flex; align-items: center; gap: 4px;
-      margin-left: auto;
-    }
-    .navbar-link {
-      font-size: 13.5px; color: var(--text-muted);
-      text-decoration: none; padding: 5px 12px;
-      border-radius: 6px;
-      transition: color .15s, background .15s;
-    }
-    .navbar-link:hover { color: var(--text); background: var(--surface); }
-    .navbar-link.ext::after { content: ' ↗'; font-size: 11px; opacity: .7; }
-    .menu-btn {
-      display: none;
-      background: none; border: none;
-      color: var(--text-muted); cursor: pointer;
-      font-size: 20px; padding: 4px 12px;
-      margin-right: auto;
-    }
-
-    /* ── layout ──────────────────────────────────────────── */
-    .layout {
-      display: flex;
-      padding-top: var(--navbar-h);
-      min-height: 100vh;
-    }
-
-    /* ── sidebar ─────────────────────────────────────────── */
-    .sidebar {
-      width: var(--sidebar-w);
-      flex-shrink: 0;
-      position: fixed;
-      top: var(--navbar-h);
-      left: 0;
-      height: calc(100vh - var(--navbar-h));
-      overflow-y: auto;
-      border-right: 1px solid var(--border);
-      padding: 16px 0 32px;
-      background: var(--bg);
-      scrollbar-width: thin;
-      scrollbar-color: var(--border) transparent;
-    }
-    .nav-group { margin-bottom: 8px; }
-    .nav-label {
-      font-size: 11px; font-weight: 700;
-      letter-spacing: .08em; text-transform: uppercase;
-      color: var(--text-light);
-      padding: 6px 16px 4px;
-    }
-    .nav-a {
-      display: block;
-      padding: 5px 16px;
-      font-size: 13.5px; color: var(--text-muted);
-      text-decoration: none;
-      border-radius: 0;
-      transition: color .12s, background .12s;
-    }
-    .nav-a:hover {
-      color: var(--text);
-      background: var(--nav-active-bg);
-    }
-    .nav-a.active {
-      color: var(--text);
-      background: var(--nav-active-bg);
-      border-left: 2px solid var(--primary);
-      padding-left: 14px;
-      font-weight: 500;
-    }
-
-    /* ── main content ────────────────────────────────────── */
-    .content {
-      margin-left: var(--sidebar-w);
-      flex: 1; min-width: 0;
-      padding: 0;
-    }
-
-    /* backdrop (mobile) */
-    .backdrop {
-      display: none; position: fixed;
-      inset: 0; background: rgba(0,0,0,.4);
-      z-index: 150;
-    }
-    .backdrop.show { display: block; }
-
-    /* ── sections ────────────────────────────────────────── */
-    .hero, .sec {
-      padding: 40px 48px;
-      max-width: var(--content-max);
-      border-bottom: 1px solid var(--border);
-    }
-    .sec:last-child { border-bottom: none; }
-
-    .sec-intro {
-      font-size: 1rem; color: var(--text-muted);
-      margin-bottom: 28px;
-      max-width: 640px;
-    }
-
-    /* ── hero ─────────────────────────────────────────────── */
-    .hero { padding-bottom: 36px; }
-
-    .breadcrumb {
-      font-size: 12.5px; color: var(--text-light);
-      margin-bottom: 12px;
-    }
-    .breadcrumb a { color: var(--link); text-decoration: none; }
-    .breadcrumb a:hover { text-decoration: underline; }
-
-    h1 {
-      font-size: 2rem; font-weight: 700;
-      color: var(--text);
-      margin-bottom: 16px;
-      line-height: 1.2;
-    }
-    .hero-sub {
-      font-size: 1.05rem; color: var(--text-muted);
-      line-height: 1.7; max-width: 600px;
-      margin-bottom: 24px;
-    }
-    .hero-sub a { color: var(--link); text-decoration: none; }
-    .hero-sub a:hover { text-decoration: underline; }
-
-    .hero-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 32px; }
-    .btn {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 8px 18px; border-radius: 6px;
-      font-size: 14px; font-weight: 600;
-      text-decoration: none; cursor: pointer; border: none;
-      font-family: var(--font);
-      transition: background .15s, color .15s, border-color .15s;
-    }
-    .btn-primary {
-      background: #ffd700; color: #07070d;
-    }
-    .btn-primary:hover { background: #e6c200; }
-    .btn-secondary {
-      background: var(--bg); color: var(--text-muted);
-      border: 1px solid var(--border);
-    }
-    .btn-secondary:hover { border-color: var(--text-light); color: var(--text); }
-
-    /* ── phase cards ─────────────────────────────────────── */
-    .phases {
-      display: flex; gap: 12px;
-      margin: 8px 0 4px;
-    }
-    .phase {
-      flex: 1;
-      padding: 16px 18px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--bg);
-    }
-    .ph-label {
-      font-size: 11px; font-weight: 600;
-      letter-spacing: .05em; text-transform: uppercase;
-      color: var(--text-light);
-      margin-bottom: 5px;
-    }
-    .ph-name {
-      font-size: 15px; font-weight: 600;
-      margin-bottom: 5px;
-    }
-    .ph-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
-
-    .phase.lp { border-left: 3px solid #2b90d9; }
-    .phase.lp .ph-name { color: #2b79b4; }
-    .phase.rp { border-left: 3px solid #7c58d3; }
-    .phase.rp .ph-name { color: #6645b4; }
-    .phase.dp { border-left: 3px solid #3b82f6; }
-    .phase.dp .ph-name { color: #2563b4; }
-
-    /* ── headings ────────────────────────────────────────── */
-    h2 {
-      font-size: 1.5rem; font-weight: 700;
-      color: var(--text); margin-bottom: 8px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border);
-    }
-    h3 {
-      font-size: 1.125rem; font-weight: 600;
-      color: var(--text);
-      margin: 24px 0 10px;
-    }
-    h4 {
-      font-size: 13px; font-weight: 600;
-      text-transform: uppercase; letter-spacing: .06em;
-      color: var(--text-muted);
-      margin: 20px 0 8px;
-    }
-
-    p { margin-bottom: 14px; }
-    a { color: var(--link); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    strong { font-weight: 600; }
-
-    /* ── inline code ─────────────────────────────────────── */
-    :not(pre) > code {
-      font-family: var(--mono);
-      font-size: .875em;
-      background: var(--code-bg);
-      color: var(--text);
-      padding: 2px 5px;
-      border-radius: 4px;
-      border: 1px solid var(--border);
-    }
-
-    /* ── code blocks ─────────────────────────────────────── */
-    .cb { position: relative; margin: 16px 0; }
-    .cb pre {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px 20px;
-      overflow-x: auto;
-      font-family: var(--mono);
-      font-size: 13.5px; line-height: 1.6;
-      color: var(--text);
-    }
-    .cb-lang {
-      position: absolute; top: 0; right: 40px;
-      font-family: var(--mono);
-      font-size: 10px; color: var(--text-light);
-      background: var(--code-bg);
-      padding: 3px 8px 0;
-      letter-spacing: .04em;
-      border-left: 1px solid var(--border);
-      border-right: 1px solid var(--border);
-    }
-    .cp {
-      position: absolute; top: 8px; right: 10px;
-      background: var(--bg); border: 1px solid var(--border);
-      color: var(--text-muted); font-size: 11px;
-      font-family: var(--font); font-weight: 500;
-      padding: 3px 8px; border-radius: 4px; cursor: pointer;
-      transition: border-color .12s, color .12s;
-    }
-    .cp:hover { border-color: var(--primary); color: var(--text-muted); }
-    .cp.ok { color: #067d17; border-color: #067d17; }
-
-    /* light syntax tokens */
-    .kw  { color: #0033b3; }           /* keywords / booleans */
-    .str { color: #067d17; }           /* strings */
-    .cm  { color: var(--text-light); font-style: italic; }   /* comments */
-    .nm  { color: #c33900; }           /* numbers */
-    .ky  { color: #2b79b4; }            /* yaml keys / json keys */
-    .pu  { color: var(--text-muted); } /* punctuation */
-
-    /* ── admonitions / callouts ──────────────────────────── */
-    .adm {
-      display: flex; gap: 12px;
-      padding: 12px 16px;
-      border-radius: 6px;
-      border-left: 4px solid;
-      margin: 20px 0;
-      font-size: 14px; line-height: 1.6;
-    }
-    .adm-note  { background: #fff8e6; border-color: var(--primary); color: var(--text); }
-    .adm-info  { background: #f0f8ff; border-color: #2b90d9; color: #1a5880; }
-    .adm-tip   { background: #f0faf4; border-color: #067d17; color: #0a5210; }
-    .adm-warn  { background: #fff4e5; border-color: #e8670a; color: #6b3300; }
-    .adm-icon  { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
-
-    /* ── tables ──────────────────────────────────────────── */
-    .tw { overflow-x: auto; margin: 14px 0; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th {
-      text-align: left; padding: 10px 14px;
-      font-size: 12px; font-weight: 600;
-      color: var(--text-muted); background: var(--surface);
-      border-bottom: 2px solid var(--border);
-    }
-    td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
-    tr:last-child td { border-bottom: none; }
-
-    /* ── file tree ───────────────────────────────────────── */
-    .ftree {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 18px 20px;
-      font-family: var(--mono);
-      font-size: 13.5px; line-height: 1.9;
-    }
-    .td { color: #2b79b4; font-weight: 500; }
-    .tf { color: var(--text); }
-    .tc { color: var(--text-light); font-style: italic; }
-
-    /* ── command list ────────────────────────────────────── */
-    .cmds { display: flex; flex-direction: column; gap: 4px; margin: 14px 0; }
-    .cmd {
-      display: flex; align-items: flex-start; gap: 20px;
-      padding: 12px 16px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-    }
-    .cmd-n {
-      font-family: var(--mono); font-size: 13px;
-      color: var(--text); white-space: nowrap; min-width: 170px;
-      font-weight: 500;
-    }
-    .cmd-d { font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
-
-    /* ── pipeline ────────────────────────────────────────── */
-    .pipe {
-      display: flex; align-items: center; flex-wrap: wrap;
-      gap: 0; margin: 20px 0;
-      font-family: var(--mono); font-size: 12.5px;
-    }
-    .ps {
-      padding: 6px 14px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px; color: var(--text-muted);
-    }
-    .pa { color: var(--border); padding: 0 8px; font-size: 18px; }
-
-    /* ── config fields ───────────────────────────────────── */
-    .cf {
-      margin: 16px 0; padding: 14px 16px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-    }
-    .cf-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
-    .cf-name { font-family: var(--mono); font-size: 14px; color: var(--text); font-weight: 500; }
-    .cf-def {
-      font-family: var(--mono); font-size: 11px;
-      color: var(--text-muted); background: var(--bg);
-      padding: 2px 7px; border-radius: 4px;
-      border: 1px solid var(--border);
-    }
-    .cf-desc { font-size: 13.5px; color: var(--text-muted); line-height: 1.6; }
-
-    /* ── scoring grid ────────────────────────────────────── */
-    .sg {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
-      gap: 10px; margin: 16px 0;
-    }
-    .sc {
-      padding: 13px 15px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-    }
-    .sc-n { font-family: var(--mono); font-size: 12px; margin-bottom: 5px; font-weight: 500; }
-    .sc-d { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
-    .pos .sc-n::before { content: '＋ '; color: #067d17; }
-    .neg .sc-n::before { content: '－ '; color: #c33900; }
-
-    /* ── operation list ──────────────────────────────────── */
-    .ops { display: flex; flex-direction: column; gap: 4px; margin: 14px 0; }
-    .op {
-      display: flex; align-items: flex-start; gap: 20px;
-      padding: 11px 16px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--bg);
-    }
-    .op-n { font-family: var(--mono); font-size: 13px; min-width: 80px; font-weight: 500; }
-    .op-d { font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
-
-    /* ── lists ───────────────────────────────────────────── */
-    ul, ol { padding-left: 22px; margin: 10px 0 14px; }
-    li { margin-bottom: 5px; }
-
-    /* ── scrollbar ───────────────────────────────────────── */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-    /* ── dark mode overrides ─────────────────────────────── */
-    [data-theme="dark"] .kw  { color: #88aaff; }
-    [data-theme="dark"] .str { color: #7ec8a4; }
-    [data-theme="dark"] .cm  { color: #777e8c; }
-    [data-theme="dark"] .nm  { color: #e8a035; }
-    [data-theme="dark"] .ky  { color: #ffd700; }
-    [data-theme="dark"] .pu  { color: #9ca0aa; }
-
-    [data-theme="dark"] .adm-note { background: #302a14; border-color: #ffd700; color: #e8d48a; }
-    [data-theme="dark"] .adm-info { background: #12263a; border-color: #4a9fd4; color: #8ac8ea; }
-    [data-theme="dark"] .adm-tip  { background: #112a18; border-color: #3d9e50; color: #7fcb8e; }
-    [data-theme="dark"] .adm-warn { background: #2e1e0a; border-color: #d47d2a; color: #d4a870; }
-
-    [data-theme="dark"] .phase.lp { border-left-color: #4a9fd4; }
-    [data-theme="dark"] .phase.lp .ph-name { color: #6bb8e8; }
-    [data-theme="dark"] .phase.rp { border-left-color: #9b7ee0; }
-    [data-theme="dark"] .phase.rp .ph-name { color: #b090e8; }
-    [data-theme="dark"] .phase.dp { border-left-color: #5a82e8; }
-    [data-theme="dark"] .phase.dp .ph-name { color: #7898e8; }
-
-
-    /* toggle button */
-    .theme-toggle {
-      background: none; border: 1px solid var(--border);
-      color: var(--text-muted); cursor: pointer;
-      font-size: 15px; line-height: 1;
-      padding: 5px 9px; border-radius: 6px;
-      transition: border-color .15s, color .15s, background .15s;
-      margin-left: 4px;
-    }
-    .theme-toggle:hover { border-color: var(--primary); color: var(--primary); background: var(--surface); }
-
-    /* ── responsive ──────────────────────────────────────── */
-    @media (max-width: 800px) {
-      .navbar-brand { width: auto; border-right: none; }
-      .sidebar {
-        transform: translateX(-100%);
-        transition: transform .25s ease;
-        z-index: 160;
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Background memory consolidation plugin for Hermes. Curates MEMORY.md with a Light → Deep → REM cycle.">
+    <title>Hermes Dreaming — Documentation</title>
+    <script>
+      (function () {
+        var t = localStorage.getItem('theme') || (
+          window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light');
+        document
+          .documentElement
+          .setAttribute('data-theme', t);
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --primary: #ffd700;
+        --primary-dark: #e6c200;
+        --primary-light: #ffdd33;
+        --bg: #ffffff;
+        --surface: #f6f7f8;
+        --surface-2: #ebedf0;
+        --border: #dadde1;
+        --text: #1c1e21;
+        --text-muted: #606770;
+        --text-light: #8d949e;
+        --link: #2b79b4;
+        --nav-active-bg: rgba(255,215,0,0.08);
+        --code-bg: #f6f7f8;
+        --navbar-h: 60px;
+        --sidebar-w: 280px;
+        --content-max: 860px;
+        --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        --mono: 'JetBrains Mono', 'Fira Code', monospace;
       }
-      .sidebar.open { transform: translateX(0); }
-      .content { margin-left: 0; }
-      .menu-btn { display: block; }
-      .hero, .sec { padding: 28px 20px; }
-      h1 { font-size: 1.6rem; }
-      h2 { font-size: 1.25rem; }
-      .phases { flex-direction: column; }
-      .sg { grid-template-columns: 1fr 1fr; }
-      .cmd { flex-direction: column; gap: 4px; }
-      .cmd-n { min-width: unset; }
-    }
-    @media (max-width: 520px) {
-      .sg { grid-template-columns: 1fr; }
-    }
-  </style>
-</head>
-<body>
 
-  <!-- ═══════════════════ NAVBAR ══════════════════════════ -->
-  <nav class="navbar">
-    <a href="#overview" class="navbar-brand">
-      <span class="brand-icon">🌙</span>
-      <span class="brand-name">Hermes Dreaming</span>
-      <span class="brand-ver">v0.3.5</span>
-    </a>
-    <button class="menu-btn" onclick="openMenu()">☰</button>
-    <div class="navbar-links">
-      <a href="https://hermes-agent.nousresearch.com/docs" class="navbar-link ext" target="_blank" rel="noopener">Hermes Docs</a>
-      <a href="https://github.com/alejandroiglesias/hermes-dreaming" class="navbar-link ext" target="_blank" rel="noopener">GitHub</a>
-      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">☀</button>
-    </div>
-  </nav>
+      [data-theme="dark"] {
+        --primary: #ffd700;
+        --primary-dark: #e6c200;
+        --primary-light: #ffd700;
+        --bg: #1b1b1d;
+        --surface: #242526;
+        --surface-2: #333538;
+        --border: #444950;
+        --text: #e8e4dc;
+        --text-muted: #dadde1;
+        --text-light: #9c9ca0;
+        --link: #ffd700;
+        --nav-active-bg: rgba(255,255,255,0.05);
+        --code-bg: #2b2d30;
+      }
 
-  <div class="backdrop" id="backdrop" onclick="closeMenu()"></div>
+      *,
+      *::after,
+      *::before {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-  <div class="layout">
+      html {
+        scroll-behavior: smooth;
+      }
 
-    <!-- ═══════════════════ SIDEBAR ═════════════════════════ -->
-    <aside class="sidebar" id="sidebar">
-      <div class="nav-group">
-        <div class="nav-label">Getting Started</div>
-        <a href="#overview"      class="nav-a active" data-sec="overview">Overview</a>
-        <a href="#installation"  class="nav-a"         data-sec="installation">Installation</a>
+      body {
+        font-family: var(--font);
+        font-size: 1rem;
+        line-height: 1.65;
+        color: var(--text);
+        background: var(--bg);
+      }
+
+      /* ── navbar ──────────────────────────────────────────── */
+      .navbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--navbar-h);
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        padding: 0 20px 0 0;
+        z-index: 200;
+        gap: 0;
+      }
+      .navbar-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 20px;
+        text-decoration: none;
+        width: var(--sidebar-w);
+        flex-shrink: 0;
+        border-right: 1px solid var(--border);
+        height: 100%;
+      }
+      .navbar-brand:hover {
+        text-decoration: none;
+      }
+      .brand-icon {
+        font-size: 20px;
+        line-height: 1;
+      }
+      .brand-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .brand-ver {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-light);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 1px 6px;
+        margin-left: 4px;
+      }
+      .navbar-links {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: auto;
+      }
+      .navbar-link {
+        font-size: 13.5px;
+        color: var(--text-muted);
+        text-decoration: none;
+        padding: 5px 12px;
+        border-radius: 6px;
+        transition: color 0.15s, background 0.15s;
+      }
+      .navbar-link:hover {
+        color: var(--text);
+        background: var(--surface);
+      }
+      .navbar-link.ext::after {
+        content: ' ↗';
+        font-size: 11px;
+        opacity: 0.7;
+      }
+      .menu-btn {
+        display: none;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 20px;
+        padding: 4px 12px;
+        margin-right: auto;
+      }
+
+      /* ── layout ──────────────────────────────────────────── */
+      .layout {
+        display: flex;
+        padding-top: var(--navbar-h);
+        min-height: 100vh;
+      }
+
+      /* ── sidebar ─────────────────────────────────────────── */
+      .sidebar {
+        width: var(--sidebar-w);
+        flex-shrink: 0;
+        position: fixed;
+        top: var(--navbar-h);
+        left: 0;
+        height: calc(100vh - var(--navbar-h));
+        overflow-y: auto;
+        border-right: 1px solid var(--border);
+        padding: 16px 0 32px;
+        background: var(--bg);
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) transparent;
+      }
+      .nav-group {
+        margin-bottom: 8px;
+      }
+      .nav-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-light);
+        padding: 6px 16px 4px;
+      }
+      .nav-a {
+        display: block;
+        padding: 5px 16px;
+        font-size: 13.5px;
+        color: var(--text-muted);
+        text-decoration: none;
+        border-radius: 0;
+        transition: color 0.12s, background 0.12s;
+      }
+      .nav-a:hover {
+        color: var(--text);
+        background: var(--nav-active-bg);
+      }
+      .nav-a.active {
+        color: var(--text);
+        background: var(--nav-active-bg);
+        border-left: 2px solid var(--primary);
+        padding-left: 14px;
+        font-weight: 500;
+      }
+
+      /* ── main content ────────────────────────────────────── */
+      .content {
+        margin-left: var(--sidebar-w);
+        flex: 1;
+        min-width: 0;
+        padding: 0;
+      }
+
+      /* backdrop (mobile) */
+      .backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.4);
+        z-index: 150;
+      }
+      .backdrop.show {
+        display: block;
+      }
+
+      /* ── sections ────────────────────────────────────────── */
+      .hero,
+      .sec {
+        padding: 40px 48px;
+        max-width: var(--content-max);
+        border-bottom: 1px solid var(--border);
+      }
+      .sec:last-child {
+        border-bottom: none;
+      }
+
+      .sec-intro {
+        font-size: 1rem;
+        color: var(--text-muted);
+        margin-bottom: 28px;
+        max-width: 640px;
+      }
+
+      /* ── hero ─────────────────────────────────────────────── */
+      .hero {
+        padding-bottom: 36px;
+      }
+
+      .breadcrumb {
+        font-size: 12.5px;
+        color: var(--text-light);
+        margin-bottom: 12px;
+      }
+      .breadcrumb a {
+        color: var(--link);
+        text-decoration: none;
+      }
+      .breadcrumb a:hover {
+        text-decoration: underline;
+      }
+
+      h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 16px;
+        line-height: 1.2;
+      }
+      .hero-sub {
+        font-size: 1.05rem;
+        color: var(--text-muted);
+        line-height: 1.7;
+        max-width: 600px;
+        margin-bottom: 24px;
+      }
+      .hero-sub a {
+        color: var(--link);
+        text-decoration: none;
+      }
+      .hero-sub a:hover {
+        text-decoration: underline;
+      }
+
+      .hero-btns {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 32px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 18px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+        font-family: var(--font);
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
+      }
+      .btn-primary {
+        background: #ffd700;
+        color: #07070d;
+      }
+      .btn-primary:hover {
+        background: #e6c200;
+      }
+      .btn-secondary {
+        background: var(--bg);
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+      }
+      .btn-secondary:hover {
+        border-color: var(--text-light);
+        color: var(--text);
+      }
+
+      /* ── phase cards ─────────────────────────────────────── */
+      .phases {
+        display: flex;
+        gap: 12px;
+        margin: 8px 0 4px;
+      }
+      .phase {
+        flex: 1;
+        padding: 16px 18px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+      }
+      .ph-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--text-light);
+        margin-bottom: 5px;
+      }
+      .ph-name {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 5px;
+      }
+      .ph-desc {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.5;
+      }
+
+      .phase.lp {
+        border-left: 3px solid #2b90d9;
+      }
+      .phase.lp .ph-name {
+        color: #2b79b4;
+      }
+      .phase.rp {
+        border-left: 3px solid #7c58d3;
+      }
+      .phase.rp .ph-name {
+        color: #6645b4;
+      }
+      .phase.dp {
+        border-left: 3px solid #3b82f6;
+      }
+      .phase.dp .ph-name {
+        color: #2563b4;
+      }
+
+      /* ── headings ────────────────────────────────────────── */
+      h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      h3 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text);
+        margin: 24px 0 10px;
+      }
+      h4 {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
+        margin: 20px 0 8px;
+      }
+
+      p {
+        margin-bottom: 14px;
+      }
+      a {
+        color: var(--link);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      strong {
+        font-weight: 600;
+      }
+
+      /* ── inline code ─────────────────────────────────────── */
+      :not(pre) > code {
+        font-family: var(--mono);
+        font-size: 0.875em;
+        background: var(--code-bg);
+        color: var(--text);
+        padding: 2px 5px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+      }
+
+      /* ── code blocks ─────────────────────────────────────── */
+      .cb {
+        position: relative;
+        margin: 16px 0;
+      }
+      .cb pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px 20px;
+        overflow-x: auto;
+        font-family: var(--mono);
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: var(--text);
+      }
+      .cb-lang {
+        position: absolute;
+        top: 0;
+        right: 40px;
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-light);
+        background: var(--code-bg);
+        padding: 3px 8px 0;
+        letter-spacing: 0.04em;
+        border-left: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+      }
+      .cp {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        font-size: 11px;
+        font-family: var(--font);
+        font-weight: 500;
+        padding: 3px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: border-color 0.12s, color 0.12s;
+      }
+      .cp:hover {
+        border-color: var(--primary);
+        color: var(--text-muted);
+      }
+      .cp.ok {
+        color: #067d17;
+        border-color: #067d17;
+      }
+
+      /* light syntax tokens */
+      .kw {
+        color: #0033b3;
+      }
+      /* keywords / booleans */
+      .str {
+        color: #067d17;
+      }
+      /* strings */
+      .cm {
+        color: var(--text-light);
+        font-style: italic;
+      }
+      /* comments */
+      .nm {
+        color: #c33900;
+      }
+      /* numbers */
+      .ky {
+        color: #2b79b4;
+      }
+      /* yaml keys / json keys */
+      .pu {
+        color: var(--text-muted);
+      }
+      /* punctuation */
+
+      /* ── admonitions / callouts ──────────────────────────── */
+      .adm {
+        display: flex;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: 6px;
+        border-left: 4px solid;
+        margin: 20px 0;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      .adm-note {
+        background: #fff8e6;
+        border-color: var(--primary);
+        color: var(--text);
+      }
+      .adm-info {
+        background: #f0f8ff;
+        border-color: #2b90d9;
+        color: #1a5880;
+      }
+      .adm-tip {
+        background: #f0faf4;
+        border-color: #067d17;
+        color: #0a5210;
+      }
+      .adm-warn {
+        background: #fff4e5;
+        border-color: #e8670a;
+        color: #6b3300;
+      }
+      .adm-icon {
+        font-size: 16px;
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+
+      /* ── tables ──────────────────────────────────────────── */
+      .tw {
+        overflow-x: auto;
+        margin: 14px 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th {
+        text-align: left;
+        padding: 10px 14px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        background: var(--surface);
+        border-bottom: 2px solid var(--border);
+      }
+      td {
+        padding: 9px 14px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      /* ── file tree ───────────────────────────────────────── */
+      .ftree {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 18px 20px;
+        font-family: var(--mono);
+        font-size: 13.5px;
+        line-height: 1.9;
+      }
+      .td {
+        color: #2b79b4;
+        font-weight: 500;
+      }
+      .tf {
+        color: var(--text);
+      }
+      .tc {
+        color: var(--text-light);
+        font-style: italic;
+      }
+
+      /* ── command list ────────────────────────────────────── */
+      .cmds {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin: 14px 0;
+      }
+      .cmd {
+        display: flex;
+        align-items: flex-start;
+        gap: 20px;
+        padding: 12px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .cmd-n {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--text);
+        white-space: nowrap;
+        min-width: 170px;
+        font-weight: 500;
+      }
+      .cmd-d {
+        font-size: 13.5px;
+        color: var(--text-muted);
+        line-height: 1.5;
+      }
+
+      /* ── pipeline ────────────────────────────────────────── */
+      .pipe {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0;
+        margin: 20px 0;
+        font-family: var(--mono);
+        font-size: 12.5px;
+      }
+      .ps {
+        padding: 6px 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text-muted);
+      }
+      .pa {
+        color: var(--border);
+        padding: 0 8px;
+        font-size: 18px;
+      }
+
+      /* ── config fields ───────────────────────────────────── */
+      .cf {
+        margin: 16px 0;
+        padding: 14px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+      .cf-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 6px;
+        flex-wrap: wrap;
+      }
+      .cf-name {
+        font-family: var(--mono);
+        font-size: 14px;
+        color: var(--text);
+        font-weight: 500;
+      }
+      .cf-def {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-muted);
+        background: var(--bg);
+        padding: 2px 7px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+      }
+      .cf-desc {
+        font-size: 13.5px;
+        color: var(--text-muted);
+        line-height: 1.6;
+      }
+
+      /* ── scoring grid ────────────────────────────────────── */
+      .sg {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+        gap: 10px;
+        margin: 16px 0;
+      }
+      .sc {
+        padding: 13px 15px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+      .sc-n {
+        font-family: var(--mono);
+        font-size: 12px;
+        margin-bottom: 5px;
+        font-weight: 500;
+      }
+      .sc-d {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.5;
+      }
+      .pos .sc-n::before {
+        content: '＋ ';
+        color: #067d17;
+      }
+      .neg .sc-n::before {
+        content: '－ ';
+        color: #c33900;
+      }
+
+      /* ── operation list ──────────────────────────────────── */
+      .ops {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin: 14px 0;
+      }
+      .op {
+        display: flex;
+        align-items: flex-start;
+        gap: 20px;
+        padding: 11px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg);
+      }
+      .op-n {
+        font-family: var(--mono);
+        font-size: 13px;
+        min-width: 80px;
+        font-weight: 500;
+      }
+      .op-d {
+        font-size: 13.5px;
+        color: var(--text-muted);
+        line-height: 1.5;
+      }
+
+      /* ── lists ───────────────────────────────────────────── */
+      ol,
+      ul {
+        padding-left: 22px;
+        margin: 10px 0 14px;
+      }
+      li {
+        margin-bottom: 5px;
+      }
+
+      /* ── scrollbar ───────────────────────────────────────── */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+      }
+
+      /* ── dark mode overrides ─────────────────────────────── */
+      [data-theme="dark"] .kw {
+        color: #88aaff;
+      }
+      [data-theme="dark"] .str {
+        color: #7ec8a4;
+      }
+      [data-theme="dark"] .cm {
+        color: #777e8c;
+      }
+      [data-theme="dark"] .nm {
+        color: #e8a035;
+      }
+      [data-theme="dark"] .ky {
+        color: #ffd700;
+      }
+      [data-theme="dark"] .pu {
+        color: #9ca0aa;
+      }
+
+      [data-theme="dark"] .adm-note {
+        background: #302a14;
+        border-color: #ffd700;
+        color: #e8d48a;
+      }
+      [data-theme="dark"] .adm-info {
+        background: #12263a;
+        border-color: #4a9fd4;
+        color: #8ac8ea;
+      }
+      [data-theme="dark"] .adm-tip {
+        background: #112a18;
+        border-color: #3d9e50;
+        color: #7fcb8e;
+      }
+      [data-theme="dark"] .adm-warn {
+        background: #2e1e0a;
+        border-color: #d47d2a;
+        color: #d4a870;
+      }
+
+      [data-theme="dark"] .phase.lp {
+        border-left-color: #4a9fd4;
+      }
+      [data-theme="dark"] .phase.lp .ph-name {
+        color: #6bb8e8;
+      }
+      [data-theme="dark"] .phase.rp {
+        border-left-color: #9b7ee0;
+      }
+      [data-theme="dark"] .phase.rp .ph-name {
+        color: #b090e8;
+      }
+      [data-theme="dark"] .phase.dp {
+        border-left-color: #5a82e8;
+      }
+      [data-theme="dark"] .phase.dp .ph-name {
+        color: #7898e8;
+      }
+
+      /* toggle button */
+      .theme-toggle {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 15px;
+        line-height: 1;
+        padding: 5px 9px;
+        border-radius: 6px;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
+        margin-left: 4px;
+      }
+      .theme-toggle:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: var(--surface);
+      }
+
+      /* ── responsive ──────────────────────────────────────── */
+      @media (max-width: 800px) {
+        .navbar-brand {
+          width: auto;
+          border-right: none;
+        }
+        .sidebar {
+          transform: translateX(-100%);
+          transition: transform 0.25s ease;
+          z-index: 160;
+        }
+        .sidebar.open {
+          transform: translateX(0);
+        }
+        .content {
+          margin-left: 0;
+        }
+        .menu-btn {
+          display: block;
+        }
+        .hero,
+        .sec {
+          padding: 28px 20px;
+        }
+        h1 {
+          font-size: 1.6rem;
+        }
+        h2 {
+          font-size: 1.25rem;
+        }
+        .phases {
+          flex-direction: column;
+        }
+        .sg {
+          grid-template-columns: 1fr 1fr;
+        }
+        .cmd {
+          flex-direction: column;
+          gap: 4px;
+        }
+        .cmd-n {
+          min-width: unset;
+        }
+      }
+      @media (max-width: 520px) {
+        .sg {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- ═══════════════════ NAVBAR ══════════════════════════ -->
+    <nav class="navbar">
+      <a href="#overview" class="navbar-brand">
+        <span class="brand-icon">🌙</span>
+        <span class="brand-name">Hermes Dreaming</span>
+        {# <span class="brand-ver">v0.3.5</span> #}
+      </a>
+      <button class="menu-btn" onclick="openMenu()">☰</button>
+      <div class="navbar-links">
+        <a href="https://hermes-agent.nousresearch.com/docs" class="navbar-link ext" target="_blank" rel="noopener">Hermes Docs</a>
+        <a href="https://github.com/alejandroiglesias/hermes-dreaming" class="navbar-link ext" target="_blank" rel="noopener">GitHub</a>
+        <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">☀</button>
       </div>
-      <div class="nav-group">
-        <div class="nav-label">Usage</div>
-        <a href="#commands"      class="nav-a"         data-sec="commands">Commands</a>
-        <a href="#configuration" class="nav-a"         data-sec="configuration">Configuration</a>
-      </div>
-      <div class="nav-group">
-        <div class="nav-label">Internals</div>
-        <a href="#how-it-works"  class="nav-a"         data-sec="how-it-works">How It Works</a>
-        <a href="#scoring"       class="nav-a"         data-sec="scoring">Scoring Model</a>
-        <a href="#state-files"   class="nav-a"         data-sec="state-files">State Files</a>
-      </div>
-      <div class="nav-group">
-        <div class="nav-label">Reference</div>
-        <a href="#design"        class="nav-a"         data-sec="design">Design Philosophy</a>
-        <a href="#contributing"  class="nav-a"         data-sec="contributing">Contributing</a>
-      </div>
-    </aside>
+    </nav>
 
-    <!-- ═══════════════════ CONTENT ═════════════════════════ -->
-    <main class="content">
+    <div class="backdrop" id="backdrop" onclick="closeMenu()"></div>
 
-      <!-- ─── OVERVIEW ──────────────────────────────────── -->
-      <section class="hero" id="overview">
-        <h1>Hermes Dreaming</h1>
+    <div class="layout">
 
-        <p class="hero-sub">
+      <!-- ═══════════════════ SIDEBAR ═════════════════════════ -->
+      <aside class="sidebar" id="sidebar">
+        <div class="nav-group">
+          <div class="nav-label">Getting Started</div>
+          <a href="#overview"      class="nav-a active" data-sec="overview">Overview</a>
+          <a href="#installation"  class="nav-a"         data-sec="installation">Installation</a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">Usage</div>
+          <a href="#commands"      class="nav-a"         data-sec="commands">Commands</a>
+          <a href="#configuration" class="nav-a"         data-sec="configuration">Configuration</a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">Internals</div>
+          <a href="#how-it-works"  class="nav-a"         data-sec="how-it-works">How It Works</a>
+          <a href="#scoring"       class="nav-a"         data-sec="scoring">Scoring Model</a>
+          <a href="#state-files"   class="nav-a"         data-sec="state-files">State Files</a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">Reference</div>
+          <a href="#design"        class="nav-a"         data-sec="design">Design Philosophy</a>
+          <a href="#contributing"  class="nav-a"         data-sec="contributing">Contributing</a>
+        </div>
+      </aside>
+
+      <!-- ═══════════════════ CONTENT ═════════════════════════ -->
+      <main class="content">
+
+        <!-- ─── OVERVIEW ──────────────────────────────────── -->
+        <section class="hero" id="overview">
+          <h1>Hermes Dreaming</h1>
+
+          <p class="hero-sub">
           Background memory consolidation for
           <a href="https://hermes-agent.nousresearch.com" target="_blank" rel="noopener">Hermes</a>.
           Curates scarce durable memory through a three-phase
@@ -590,273 +960,326 @@
           compact, current, and high-signal.
         </p>
 
-        <div class="hero-btns">
-          <a href="#installation" class="btn btn-primary">Get Started</a>
-          <a href="https://github.com/alejandroiglesias/hermes-dreaming"
+          <div class="hero-btns">
+            <a href="#installation" class="btn btn-primary">Get Started</a>
+            <a href="https://github.com/alejandroiglesias/hermes-dreaming"
              class="btn btn-secondary" target="_blank" rel="noopener">GitHub ↗</a>
-        </div>
+          </div>
 
-        <div class="phases">
-          <div class="phase lp">
-            <div class="ph-label">Phase 1</div>
-            <div class="ph-name">Light</div>
-            <div class="ph-desc">Scans recent sessions. Extracts candidate facts and preferences. No durable writes.</div>
+          <div class="phases">
+            <div class="phase lp">
+              <div class="ph-label">Phase 1</div>
+              <div class="ph-name">Light</div>
+              <div class="ph-desc">Scans recent sessions. Extracts candidate facts and preferences. No durable writes.</div>
+            </div>
+            <div class="phase rp">
+              <div class="ph-label">Phase 2</div>
+              <div class="ph-name">Deep</div>
+              <div class="ph-desc">Reflects on patterns. Detects contradictions and superseded entries.</div>
+            </div>
+            <div class="phase dp">
+              <div class="ph-label">Phase 3</div>
+              <div class="ph-name">REM</div>
+              <div class="ph-desc">Scores candidates. Applies at most a few high-confidence memory operations.</div>
+            </div>
           </div>
-          <div class="phase rp">
-            <div class="ph-label">Phase 2</div>
-            <div class="ph-name">Deep</div>
-            <div class="ph-desc">Reflects on patterns. Detects contradictions and superseded entries.</div>
-          </div>
-          <div class="phase dp">
-            <div class="ph-label">Phase 3</div>
-            <div class="ph-name">REM</div>
-            <div class="ph-desc">Scores candidates. Applies at most a few high-confidence memory operations.</div>
-          </div>
-        </div>
 
-        <div class="adm adm-note">
-          <span class="adm-icon">💡</span>
-          <div>
-            <strong>Core principle:</strong> Hermes durable memory is prompt-visible and scarce.
+          <div class="adm adm-note">
+            <span class="adm-icon">💡</span>
+            <div>
+              <strong>Core principle:</strong> Hermes durable memory is prompt-visible and scarce.
             A successful Dreaming run may produce <strong>zero durable writes</strong>.
             The goal is <em>highest future usefulness per character</em> — not more memories.
           </div>
-        </div>
-      </section>
+          </div>
+        </section>
 
-      <!-- ─── INSTALLATION ──────────────────────────────── -->
-      <section class="sec" id="installation">
-        <h2>Installation</h2>
-        <p class="sec-intro">Install Hermes Dreaming into the same Python environment that runs Hermes, then enable the plugin in your Hermes config.</p>
+        <!-- ─── INSTALLATION ──────────────────────────────── -->
+        <section class="sec" id="installation">
+          <h2>Installation</h2>
+          <p class="sec-intro">Install Hermes Dreaming into the same Python environment that runs Hermes, then enable the plugin in your Hermes config.</p>
 
-        <h3>Install</h3>
-        <p>Use the Hermes plugin manager — it handles cloning, environment setup, and enabling automatically:</p>
+          <h3>Install</h3>
+          <p>Use the Hermes plugin manager — it handles cloning, environment setup, and enabling automatically:</p>
 
-        <div class="cb">
-          <span class="cb-lang">bash</span>
-          <button class="cp" onclick="cp(this)">Copy</button>
-<pre>hermes plugins install alejandroiglesias/hermes-dreaming</pre>
-        </div>
+          <div class="cb">
+            <span class="cb-lang">bash</span>
+            <button class="cp" onclick="cp(this)">Copy</button>
+            <pre>hermes plugins install alejandroiglesias/hermes-dreaming</pre>
+          </div>
 
-        <p>To update later:</p>
+          <p>To update later:</p>
 
-        <div class="cb">
-          <span class="cb-lang">bash</span>
-          <button class="cp" onclick="cp(this)">Copy</button>
-<pre>hermes plugins update hermes-dreaming</pre>
-        </div>
+          <div class="cb">
+            <span class="cb-lang">bash</span>
+            <button class="cp" onclick="cp(this)">Copy</button>
+            <pre>hermes plugins update hermes-dreaming</pre>
+          </div>
 
-        <h3>Enable the plugin</h3>
-        <p>Add hermes-dreaming to <code>~/.hermes/config.yaml</code>:</p>
+          <h3>Enable the plugin</h3>
+          <p>Add Hermes Dreaming to <code>~/.hermes/config.yaml</code>:</p>
 
-        <div class="cb">
-          <span class="cb-lang">yaml</span>
-          <button class="cp" onclick="cp(this)">Copy</button>
-<pre><span class="ky">plugins</span><span class="pu">:</span>
+          <div class="cb">
+            <span class="cb-lang">yaml</span>
+            <button class="cp" onclick="cp(this)">Copy</button>
+            <pre><span class="ky">plugins</span><span class="pu">:</span>
   <span class="ky">enabled</span><span class="pu">:</span>
     <span class="pu">-</span> <span class="str">hermes-dreaming</span></pre>
-        </div>
-
-        <h3>Verify</h3>
-        <p>From the terminal:</p>
-
-        <div class="cb">
-          <span class="cb-lang">bash</span>
-          <button class="cp" onclick="cp(this)">Copy</button>
-<pre>hermes dreaming status</pre>
-        </div>
-
-        <p>Or from within a Hermes session:</p>
-
-        <div class="cb">
-          <span class="cb-lang">hermes</span>
-          <button class="cp" onclick="cp(this)">Copy</button>
-<pre>/dreaming status</pre>
-        </div>
-      </section>
-
-      <!-- ─── COMMANDS ──────────────────────────────────── -->
-      <section class="sec" id="commands">
-        <h2>Commands</h2>
-        <p class="sec-intro">Hermes Dreaming exposes commands as Hermes slash commands (for use within sessions) and as CLI subcommands.</p>
-
-        <h3>Slash Commands</h3>
-
-        <div class="cmds">
-          <div class="cmd">
-            <div class="cmd-n">/dreaming run</div>
-            <div class="cmd-d">Full dreaming cycle (Light → Deep → REM). Applies memory changes. Mirrors scheduled behaviour.</div>
           </div>
-          <div class="cmd">
-            <div class="cmd-n">/dreaming review</div>
-            <div class="cmd-d">Dry-run mode. Stages candidates, scores them, and proposes operations — but does <strong>not</strong> mutate <code>MEMORY.md</code> or <code>USER.md</code>.</div>
-          </div>
-          <div class="cmd">
-            <div class="cmd-n">/dreaming status</div>
-            <div class="cmd-d">Shows last run, staged candidate count, last memory changes, current memory usage, and any errors.</div>
-          </div>
-          <div class="cmd">
-            <div class="cmd-n">/dreaming compact</div>
-            <div class="cmd-d">Cleanup pass: detects duplicates, contradictions, and superseded entries — without a full Light → Deep scan.</div>
-          </div>
-        </div>
 
-        <h3>CLI Commands</h3>
+          <h3>Verify</h3>
+          <p>From the terminal:</p>
 
-        <div class="cb">
-          <span class="cb-lang">bash</span>
-          <button class="cp" onclick="cp(this)">Copy</button>
-<pre>hermes dreaming run           <span class="cm"># full cycle</span>
+          <div class="cb">
+            <span class="cb-lang">bash</span>
+            <button class="cp" onclick="cp(this)">Copy</button>
+            <pre>hermes dreaming status</pre>
+          </div>
+
+          <p>Or from within a Hermes session:</p>
+
+          <div class="cb">
+            <span class="cb-lang">hermes</span>
+            <button class="cp" onclick="cp(this)">Copy</button>
+            <pre>/dreaming status</pre>
+          </div>
+        </section>
+
+        <!-- ─── COMMANDS ──────────────────────────────────── -->
+        <section class="sec" id="commands">
+          <h2>Commands</h2>
+          <p class="sec-intro">Hermes Dreaming exposes commands as Hermes slash commands (for use within sessions) and as CLI subcommands.</p>
+
+          <h3>Slash Commands</h3>
+
+          <div class="cmds">
+            <div class="cmd">
+              <div class="cmd-n">/dreaming run</div>
+              <div class="cmd-d">Full dreaming cycle (Light → Deep → REM). Applies memory changes. Mirrors scheduled behaviour.</div>
+            </div>
+            <div class="cmd">
+              <div class="cmd-n">/dreaming review</div>
+              <div class="cmd-d">Dry-run mode. Stages candidates, scores them, and proposes operations — but does <strong>not</strong> mutate <code>MEMORY.md</code> or <code>USER.md</code>.</div>
+            </div>
+            <div class="cmd">
+              <div class="cmd-n">/dreaming status</div>
+              <div class="cmd-d">Shows last run, staged candidate count, last memory changes, current memory usage, and any errors.</div>
+            </div>
+            <div class="cmd">
+              <div class="cmd-n">/dreaming compact</div>
+              <div class="cmd-d">Cleanup pass: detects duplicates, contradictions, and superseded entries — without a full Light → Deep scan.</div>
+            </div>
+          </div>
+
+          <h3>CLI Commands</h3>
+
+          <div class="cb">
+            <span class="cb-lang">bash</span>
+            <button class="cp" onclick="cp(this)">Copy</button>
+            <pre>hermes dreaming run           <span class="cm"># full cycle</span>
 hermes dreaming review        <span class="cm"># dry-run</span>
 hermes dreaming status        <span class="cm"># show state</span>
 hermes dreaming compact       <span class="cm"># cleanup pass</span>
 hermes dreaming install-cron  <span class="cm"># register nightly 03:00 cron job</span></pre>
-        </div>
+          </div>
 
-        <h4>install-cron options</h4>
-        <div class="cb">
-          <span class="cb-lang">bash</span>
-          <button class="cp" onclick="cp(this)">Copy</button>
-<pre>hermes dreaming install-cron --schedule <span class="str">"0 3 * * *"</span></pre>
-        </div>
-      </section>
+          <h4>install-cron options</h4>
+          <div class="cb">
+            <span class="cb-lang">bash</span>
+            <button class="cp" onclick="cp(this)">Copy</button>
+            <pre>hermes dreaming install-cron --schedule <span class="str">"0 3 * * *"</span></pre>
+          </div>
+        </section>
 
-      <!-- ─── CONFIGURATION ─────────────────────────────── -->
-      <section class="sec" id="configuration">
-        <h2>Configuration</h2>
-        <p class="sec-intro">Add a <code>dreaming</code> block to <code>~/.hermes/config.yaml</code>. All fields are optional — defaults are conservative.</p>
+        <!-- ─── CONFIGURATION ─────────────────────────────── -->
+        <section class="sec" id="configuration">
+          <h2>Configuration</h2>
+          <p class="sec-intro">Add a <code>dreaming</code> block to <code>~/.hermes/config.yaml</code>. All fields are optional — defaults are conservative.</p>
 
-        <div class="cb">
-          <span class="cb-lang">yaml</span>
-          <button class="cp" onclick="cp(this)">Copy</button>
-<pre><span class="ky">dreaming</span><span class="pu">:</span>
+          <div class="cb">
+            <span class="cb-lang">yaml</span>
+            <button class="cp" onclick="cp(this)">Copy</button>
+            <pre><span class="ky">dreaming</span><span class="pu">:</span>
   <span class="ky">enabled</span><span class="pu">:</span>               <span class="kw">true</span>
   <span class="ky">schedule</span><span class="pu">:</span>              <span class="str">"0 3 * * *"</span>
   <span class="ky">max_changes_per_run</span><span class="pu">:</span>   <span class="nm">3</span>
   <span class="ky">recent_sessions_limit</span><span class="pu">:</span> <span class="nm">14</span></pre>
-        </div>
-
-        <div class="cf">
-          <div class="cf-head">
-            <span class="cf-name">enabled</span>
-            <span class="cf-def">default: true</span>
           </div>
-          <div class="cf-desc">Whether the plugin is active. Set to <code>false</code> to disable without uninstalling.</div>
-        </div>
 
-        <div class="cf">
-          <div class="cf-head">
-            <span class="cf-name">schedule</span>
-            <span class="cf-def">default: "0 3 * * *"</span>
+          <div class="cf">
+            <div class="cf-head">
+              <span class="cf-name">enabled</span>
+              <span class="cf-def">default: true</span>
+            </div>
+            <div class="cf-desc">Whether the plugin is active. Set to <code>false</code> to disable without uninstalling.</div>
           </div>
-          <div class="cf-desc">Cron expression for the nightly scheduled run. Defaults to 03:00 every day. No idle napping — runs are predictable and auditable.</div>
-        </div>
 
-        <div class="cf">
-          <div class="cf-head">
-            <span class="cf-name">max_changes_per_run</span>
-            <span class="cf-def">default: 3</span>
+          <div class="cf">
+            <div class="cf-head">
+              <span class="cf-name">schedule</span>
+              <span class="cf-def">default: "0 3 * * *"</span>
+            </div>
+            <div class="cf-desc">Cron expression for the nightly scheduled run. Defaults to 03:00 every day. No idle napping — runs are predictable and auditable.</div>
           </div>
-          <div class="cf-desc">Hard limit on durable memory mutations per run (additions + replacements + removals). When candidates exceed this limit, priority is: replace contradictions → merge duplicates → add one exceptional memory.</div>
-        </div>
 
-        <div class="cf">
-          <div class="cf-head">
-            <span class="cf-name">recent_sessions_limit</span>
-            <span class="cf-def">default: 14</span>
+          <div class="cf">
+            <div class="cf-head">
+              <span class="cf-name">max_changes_per_run</span>
+              <span class="cf-def">default: 3</span>
+            </div>
+            <div class="cf-desc">Hard limit on durable memory mutations per run (additions + replacements + removals). When candidates exceed this limit, priority is: replace contradictions → merge duplicates → add one exceptional memory.</div>
           </div>
-          <div class="cf-desc">How many recent Hermes sessions the Light phase scans for candidates.</div>
-        </div>
-      </section>
 
-      <!-- ─── HOW IT WORKS ──────────────────────────────── -->
-      <section class="sec" id="how-it-works">
-        <h2>How It Works</h2>
-        <p class="sec-intro">Each dreaming run executes three cooperative phases. Only the REM phase can mutate durable memory.</p>
-
-        <div class="pipe">
-          <div class="ps">sessions</div><span class="pa">→</span>
-          <div class="ps" style="color:#2b79b4">Light</div><span class="pa">→</span>
-          <div class="ps" style="color:#6645b4">Deep</div><span class="pa">→</span>
-          <div class="ps" style="color:#2563b4">REM</div><span class="pa">→</span>
-          <div class="ps" style="color:#067d17">MEMORY.md</div>
-        </div>
-
-        <h3>Phase 1 — Light Sleep</h3>
-        <p>Cheap and conservative. Scans recent sessions and extracts compact candidate signals. Never writes durable memory.</p>
-        <ul>
-          <li>Reads the most recent sessions from the Hermes session DB (up to <code>recent_sessions_limit</code>)</li>
-          <li>Extracts candidates: preferences, corrections, project facts, recurring workflows, supersession signals</li>
-          <li>Deduplicates obvious repeats and records source session IDs</li>
-          <li>Writes staged candidates to <code>candidates.jsonl</code></li>
-        </ul>
-
-        <p>Candidate types:</p>
-        <div class="tw">
-          <table>
-            <thead>
-              <tr><th>Type</th><th>Description</th></tr>
-            </thead>
-            <tbody>
-              <tr><td><code>user_preference</code></td>       <td>A stable preference about tools, workflows, or approaches</td></tr>
-              <tr><td><code>communication_preference</code></td><td>How the user prefers to receive information</td></tr>
-              <tr><td><code>project_fact</code></td>          <td>A stable fact about a project or environment</td></tr>
-              <tr><td><code>decision</code></td>              <td>A decision the user has made</td></tr>
-              <tr><td><code>correction</code></td>            <td>User corrected the assistant — strong signal</td></tr>
-              <tr><td><code>recurring_workflow</code></td>    <td>A workflow appearing repeatedly across sessions</td></tr>
-              <tr><td><code>supersession_signal</code></td>   <td>Evidence that an existing memory may be outdated</td></tr>
-              <tr><td><code>stale_signal</code></td>          <td>Evidence that an existing memory is no longer relevant</td></tr>
-              <tr><td><code>skill_candidate</code></td>       <td>Something better represented as a skill than memory</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <h3>Phase 2 — Deep Sleep</h3>
-        <p>Reflects on staged candidates against existing durable memory. Does not write memory.</p>
-        <ul>
-          <li>Identifies recurring themes and detects contradictions</li>
-          <li>Identifies superseded memories (older entries overridden by newer statements)</li>
-          <li>Distinguishes durable preferences from session-specific details</li>
-          <li>Flags candidates better suited to skills than durable memory</li>
-          <li>Suggests canonical phrasings for potential merged entries</li>
-        </ul>
-
-        <h3>Phase 3 — REM Sleep</h3>
-        <p>The only phase allowed to mutate durable memory. Applies at most <code>max_changes_per_run</code> high-confidence operations, in preference order:</p>
-
-        <div class="ops">
-          <div class="op">
-            <div class="op-n" style="color:var(--text-muted)">no-op</div>
-            <div class="op-d">Memory unchanged when no candidate clears score thresholds.</div>
+          <div class="cf">
+            <div class="cf-head">
+              <span class="cf-name">recent_sessions_limit</span>
+              <span class="cf-def">default: 14</span>
+            </div>
+            <div class="cf-desc">How many recent Hermes sessions the Light phase scans for candidates.</div>
           </div>
-          <div class="op">
-            <div class="op-n" style="color:#6645b4">replace</div>
-            <div class="op-d">Replaces a superseded entry with a more current or compact version. Score ≥ 0.80, supersession confidence ≥ 0.75.</div>
-          </div>
-          <div class="op">
-            <div class="op-n" style="color:#c33900">remove</div>
-            <div class="op-d">Removes an entry that is clearly obsolete, false, or superseded. Confidence ≥ 0.85.</div>
-          </div>
-          <div class="op">
-            <div class="op-n" style="color:#067d17">add</div>
-            <div class="op-d">Adds a new entry only when the candidate would improve almost every future session. Score ≥ 0.88.</div>
-          </div>
-        </div>
+        </section>
 
-        <div class="adm adm-warn">
-          <span class="adm-icon">⚠️</span>
-          <div>Before any mutation, timestamped backups of <code>MEMORY.md</code> and <code>USER.md</code> are created at <code>~/.hermes/dreaming/backups/</code>. All operations are logged to <code>DREAMS.md</code>.</div>
-        </div>
-      </section>
+        <!-- ─── HOW IT WORKS ──────────────────────────────── -->
+        <section class="sec" id="how-it-works">
+          <h2>How It Works</h2>
+          <p class="sec-intro">Each dreaming run executes three cooperative phases. Only the REM phase can mutate durable memory.</p>
 
-      <!-- ─── SCORING ────────────────────────────────────── -->
-      <section class="sec" id="scoring">
-        <h2>Scoring Model</h2>
-        <p class="sec-intro">The REM phase scores each candidate using a weighted model. The agent computes scores via LLM judgment; this module defines the threshold values enforced as hard gates.</p>
+          <div class="pipe">
+            <div class="ps">sessions</div>
+            <span class="pa">→</span>
+            <div class="ps" style="color:#2b79b4">Light</div>
+            <span class="pa">→</span>
+            <div class="ps" style="color:#6645b4">Deep</div>
+            <span class="pa">→</span>
+            <div class="ps" style="color:#2563b4">REM</div>
+            <span class="pa">→</span>
+            <div class="ps" style="color:#067d17">MEMORY.md</div>
+          </div>
 
-        <div class="cb">
-          <span class="cb-lang">formula</span>
-<pre>score =
+          <h3>Phase 1 — Light Sleep</h3>
+          <p>Cheap and conservative. Scans recent sessions and extracts compact candidate signals. Never writes durable memory.</p>
+          <ul>
+            <li>Reads the most recent sessions from the Hermes session DB (up to <code>recent_sessions_limit</code>)</li>
+            <li>Extracts candidates: preferences, corrections, project facts, recurring workflows, supersession signals</li>
+            <li>Deduplicates obvious repeats and records source session IDs</li>
+            <li>Writes staged candidates to <code>candidates.jsonl</code>
+            </li>
+          </ul>
+
+          <p>Candidate types:</p>
+          <div class="tw">
+            <table>
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <code>user_preference</code>
+                  </td>
+                  <td>A stable preference about tools, workflows, or approaches</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>communication_preference</code>
+                  </td>
+                  <td>How the user prefers to receive information</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>project_fact</code>
+                  </td>
+                  <td>A stable fact about a project or environment</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>decision</code>
+                  </td>
+                  <td>A decision the user has made</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>correction</code>
+                  </td>
+                  <td>User corrected the assistant — strong signal</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>recurring_workflow</code>
+                  </td>
+                  <td>A workflow appearing repeatedly across sessions</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>supersession_signal</code>
+                  </td>
+                  <td>Evidence that an existing memory may be outdated</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>stale_signal</code>
+                  </td>
+                  <td>Evidence that an existing memory is no longer relevant</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>skill_candidate</code>
+                  </td>
+                  <td>Something better represented as a skill than memory</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Phase 2 — Deep Sleep</h3>
+          <p>Reflects on staged candidates against existing durable memory. Does not write memory.</p>
+          <ul>
+            <li>Identifies recurring themes and detects contradictions</li>
+            <li>Identifies superseded memories (older entries overridden by newer statements)</li>
+            <li>Distinguishes durable preferences from session-specific details</li>
+            <li>Flags candidates better suited to skills than durable memory</li>
+            <li>Suggests canonical phrasings for potential merged entries</li>
+          </ul>
+
+          <h3>Phase 3 — REM Sleep</h3>
+          <p>The only phase allowed to mutate durable memory. Applies at most <code>max_changes_per_run</code> high-confidence operations, in preference order:</p>
+
+          <div class="ops">
+            <div class="op">
+              <div class="op-n" style="color:var(--text-muted)">no-op</div>
+              <div class="op-d">Memory unchanged when no candidate clears score thresholds.</div>
+            </div>
+            <div class="op">
+              <div class="op-n" style="color:#6645b4">replace</div>
+              <div class="op-d">Replaces a superseded entry with a more current or compact version. Score ≥ 0.80, supersession confidence ≥ 0.75.</div>
+            </div>
+            <div class="op">
+              <div class="op-n" style="color:#c33900">remove</div>
+              <div class="op-d">Removes an entry that is clearly obsolete, false, or superseded. Confidence ≥ 0.85.</div>
+            </div>
+            <div class="op">
+              <div class="op-n" style="color:#067d17">add</div>
+              <div class="op-d">Adds a new entry only when the candidate would improve almost every future session. Score ≥ 0.88.</div>
+            </div>
+          </div>
+
+          <div class="adm adm-warn">
+            <span class="adm-icon">⚠️</span>
+            <div>Before any mutation, timestamped backups of <code>MEMORY.md</code> and <code>USER.md</code> are created at <code>~/.hermes/dreaming/backups/</code>. All operations are logged to <code>DREAMS.md</code>.</div>
+          </div>
+        </section>
+
+        <!-- ─── SCORING ────────────────────────────────────── -->
+        <section class="sec" id="scoring">
+          <h2>Scoring Model</h2>
+          <p class="sec-intro">The REM phase scores each candidate using a weighted model. The agent computes scores via LLM judgment; this module defines the threshold values enforced as hard gates.</p>
+
+          <div class="cb">
+            <span class="cb-lang">formula</span>
+            <pre>score =
   future_usefulness    <span class="cm"># will this improve future answers often?</span>
 + query_diversity      <span class="cm"># how many different types of future tasks benefit?</span>
 + stability            <span class="cm"># is it likely to remain true?</span>
@@ -870,78 +1293,182 @@ hermes dreaming install-cron  <span class="cm"># register nightly 03:00 cron job
 − duplication          <span class="cm"># is it already covered?</span>
 − volatility           <span class="cm"># is it likely to change soon?</span>
 − sensitivity          <span class="cm"># does it involve sensitive attributes?</span></pre>
-        </div>
+          </div>
 
-        <h3>Dimensions</h3>
-        <div class="sg">
-          <div class="sc pos"><div class="sc-n">future_usefulness</div><div class="sc-d">Will this improve future answers often? The primary metric.</div></div>
-          <div class="sc pos"><div class="sc-n">query_diversity</div><div class="sc-d">How many different types of future tasks benefit? Breadth, not just frequency.</div></div>
-          <div class="sc pos"><div class="sc-n">stability</div><div class="sc-d">Is it likely to remain true for months?</div></div>
-          <div class="sc pos"><div class="sc-n">recurrence</div><div class="sc-d">Has it appeared across multiple sessions?</div></div>
-          <div class="sc pos"><div class="sc-n">recency</div><div class="sc-d">How recently did this signal appear? Recent patterns outweigh old unreinforced ones.</div></div>
-          <div class="sc pos"><div class="sc-n">explicitness</div><div class="sc-d">1.0 = user stated it directly; 0.0 = inferred.</div></div>
-          <div class="sc pos"><div class="sc-n">correction_signal</div><div class="sc-d">User corrected the assistant — strong signal.</div></div>
-          <div class="sc pos"><div class="sc-n">actionability</div><div class="sc-d">Will knowing this change what the assistant says or does? Pure context that alters no response is low-value.</div></div>
-          <div class="sc pos"><div class="sc-n">compression_value</div><div class="sc-d">Compactly summarizes many observations.</div></div>
-          <div class="sc neg"><div class="sc-n">character_cost</div><div class="sc-d">Characters consumed from the scarce prompt budget.</div></div>
-          <div class="sc neg"><div class="sc-n">duplication</div><div class="sc-d">Already covered by an existing memory entry.</div></div>
-          <div class="sc neg"><div class="sc-n">volatility</div><div class="sc-d">Likely to change or become outdated quickly.</div></div>
-          <div class="sc neg"><div class="sc-n">sensitivity</div><div class="sc-d">Involves sensitive personal attributes.</div></div>
-        </div>
+          <h3>Dimensions</h3>
+          <div class="sg">
+            <div class="sc pos">
+              <div class="sc-n">future_usefulness</div>
+              <div class="sc-d">Will this improve future answers often? The primary metric.</div>
+            </div>
+            <div class="sc pos">
+              <div class="sc-n">query_diversity</div>
+              <div class="sc-d">How many different types of future tasks benefit? Breadth, not just frequency.</div>
+            </div>
+            <div class="sc pos">
+              <div class="sc-n">stability</div>
+              <div class="sc-d">Is it likely to remain true for months?</div>
+            </div>
+            <div class="sc pos">
+              <div class="sc-n">recurrence</div>
+              <div class="sc-d">Has it appeared across multiple sessions?</div>
+            </div>
+            <div class="sc pos">
+              <div class="sc-n">recency</div>
+              <div class="sc-d">How recently did this signal appear? Recent patterns outweigh old unreinforced ones.</div>
+            </div>
+            <div class="sc pos">
+              <div class="sc-n">explicitness</div>
+              <div class="sc-d">1.0 = user stated it directly; 0.0 = inferred.</div>
+            </div>
+            <div class="sc pos">
+              <div class="sc-n">correction_signal</div>
+              <div class="sc-d">User corrected the assistant — strong signal.</div>
+            </div>
+            <div class="sc pos">
+              <div class="sc-n">actionability</div>
+              <div class="sc-d">Will knowing this change what the assistant says or does? Pure context that alters no response is low-value.</div>
+            </div>
+            <div class="sc pos">
+              <div class="sc-n">compression_value</div>
+              <div class="sc-d">Compactly summarizes many observations.</div>
+            </div>
+            <div class="sc neg">
+              <div class="sc-n">character_cost</div>
+              <div class="sc-d">Characters consumed from the scarce prompt budget.</div>
+            </div>
+            <div class="sc neg">
+              <div class="sc-n">duplication</div>
+              <div class="sc-d">Already covered by an existing memory entry.</div>
+            </div>
+            <div class="sc neg">
+              <div class="sc-n">volatility</div>
+              <div class="sc-d">Likely to change or become outdated quickly.</div>
+            </div>
+            <div class="sc neg">
+              <div class="sc-n">sensitivity</div>
+              <div class="sc-d">Involves sensitive personal attributes.</div>
+            </div>
+          </div>
 
-        <h3>Thresholds</h3>
-        <div class="tw">
-          <table>
-            <thead><tr><th>Operation</th><th>Threshold</th><th>Additional requirement</th></tr></thead>
-            <tbody>
-              <tr><td><code>add</code></td>     <td>score ≥ <strong>0.88</strong></td>    <td>—</td></tr>
-              <tr><td><code>replace</code></td> <td>score ≥ <strong>0.80</strong></td>    <td>supersession confidence ≥ 0.75</td></tr>
-              <tr><td><code>remove</code></td>  <td>confidence ≥ <strong>0.85</strong></td><td>—</td></tr>
-              <tr><td><code>merge</code></td>   <td>overlap ≥ <strong>0.80</strong></td>  <td>merged entry is shorter or clearer</td></tr>
-            </tbody>
-          </table>
-        </div>
+          <h3>Thresholds</h3>
+          <div class="tw">
+            <table>
+              <thead>
+                <tr>
+                  <th>Operation</th>
+                  <th>Threshold</th>
+                  <th>Additional requirement</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <code>add</code>
+                  </td>
+                  <td>score ≥ <strong>0.88</strong>
+                  </td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>replace</code>
+                  </td>
+                  <td>score ≥ <strong>0.80</strong>
+                  </td>
+                  <td>supersession confidence ≥ 0.75</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>remove</code>
+                  </td>
+                  <td>confidence ≥ <strong>0.85</strong>
+                  </td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>merge</code>
+                  </td>
+                  <td>overlap ≥ <strong>0.80</strong>
+                  </td>
+                  <td>merged entry is shorter or clearer</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-        <h3>Run-level limits</h3>
-        <div class="tw">
-          <table>
-            <thead><tr><th>Limit</th><th>Default</th><th>Description</th></tr></thead>
-            <tbody>
-              <tr><td><code>max_changes_per_run</code></td>  <td>3</td>   <td>Total durable mutations per run</td></tr>
-              <tr><td><code>max_adds_per_run</code></td>     <td>1</td>   <td>Add operations are rate-limited extra strictly</td></tr>
-              <tr><td><code>max_new_chars_per_run</code></td><td>250</td> <td>Net characters added to memory per run</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+          <h3>Run-level limits</h3>
+          <div class="tw">
+            <table>
+              <thead>
+                <tr>
+                  <th>Limit</th>
+                  <th>Default</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <code>max_changes_per_run</code>
+                  </td>
+                  <td>3</td>
+                  <td>Total durable mutations per run</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>max_adds_per_run</code>
+                  </td>
+                  <td>1</td>
+                  <td>Add operations are rate-limited extra strictly</td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>max_new_chars_per_run</code>
+                  </td>
+                  <td>250</td>
+                  <td>Net characters added to memory per run</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-      <!-- ─── STATE FILES ────────────────────────────────── -->
-      <section class="sec" id="state-files">
-        <h2>State Files</h2>
-        <p class="sec-intro">All runtime state lives under <code>~/.hermes/dreaming/</code>. The JSONL files are machine-readable sidecars and are not injected into the prompt.</p>
+        <!-- ─── STATE FILES ────────────────────────────────── -->
+        <section class="sec" id="state-files">
+          <h2>State Files</h2>
+          <p class="sec-intro">All runtime state lives under <code>~/.hermes/dreaming/</code>. The JSONL files are machine-readable sidecars and are not injected into the prompt.</p>
 
-        <div class="ftree">
-<span class="td">~/.hermes/dreaming/</span>
-├── <span class="tf">DREAMS.md</span>           <span class="tc"># human-readable audit diary</span>
-├── <span class="tf">state.json</span>          <span class="tc"># last run metadata</span>
-├── <span class="tf">candidates.jsonl</span>    <span class="tc"># staged Light-phase candidates</span>
-├── <span class="tf">decisions.jsonl</span>     <span class="tc"># all Deep/REM decisions (incl. rejections)</span>
-├── <span class="tf">promotions.jsonl</span>    <span class="tc"># applied memory operations</span>
-├── <span class="td">runs/</span>               <span class="tc"># per-run JSON records</span>
+          <div class="ftree">
+            <span class="td">~/.hermes/dreaming/</span>
+├── <span class="tf">DREAMS.md</span>
+            <span class="tc"># human-readable audit diary</span>
+├── <span class="tf">state.json</span>
+            <span class="tc"># last run metadata</span>
+├── <span class="tf">candidates.jsonl</span>
+            <span class="tc"># staged Light-phase candidates</span>
+├── <span class="tf">decisions.jsonl</span>
+            <span class="tc"># all Deep/REM decisions (incl. rejections)</span>
+├── <span class="tf">promotions.jsonl</span>
+            <span class="tc"># applied memory operations</span>
+├── <span class="td">runs/</span>
+            <span class="tc"># per-run JSON records</span>
 │   └── <span class="tf">YYYY-MM-DDTHH-mm-ss.json</span>
-└── <span class="td">backups/</span>            <span class="tc"># timestamped MEMORY.md / USER.md snapshots</span>
+└── <span class="td">backups/</span>
+            <span class="tc"># timestamped MEMORY.md / USER.md snapshots</span>
     └── <span class="td">2026-05-01T03-00-00/</span>
         ├── <span class="tf">MEMORY.md</span>
         └── <span class="tf">USER.md</span>
-        </div>
+          </div>
 
-        <h3>DREAMS.md</h3>
-        <p>The human-readable audit diary. Records every run — what was scanned, proposed, applied, and rejected. Not used as a promotion source.</p>
+          <h3>DREAMS.md</h3>
+          <p>The human-readable audit diary. Records every run — what was scanned, proposed, applied, and rejected. Not used as a promotion source.</p>
 
-        <div class="cb">
-          <span class="cb-lang">markdown</span>
-          <button class="cp" onclick="cp(this)">Copy</button>
-<pre><span class="cm">## 2026-05-01 03:00 — Nightly Dream</span>
+          <div class="cb">
+            <span class="cb-lang">markdown</span>
+            <button class="cp" onclick="cp(this)">Copy</button>
+            <pre><span class="cm">## 2026-05-01 03:00 — Nightly Dream</span>
 
 <span class="cm">### Light Sleep</span>
 - Scanned 14 recent sessions.
@@ -955,144 +1482,209 @@ Memory operations:
    Reason: newer explicit preference supersedes older style guidance.
 
 Summary: 2 durable memory changes applied. 10 candidates rejected.</pre>
-        </div>
+          </div>
 
-      </section>
+        </section>
 
-      <!-- ─── DESIGN ────────────────────────────────────── -->
-      <section class="sec" id="design">
-        <h2>Design Philosophy</h2>
-        <p class="sec-intro">Hermes Dreaming treats durable memory as scarce prompt budget: each run consolidates recent session traces into a few compact, high-signal memories, or deliberately writes nothing.</p>
+        <!-- ─── DESIGN ────────────────────────────────────── -->
+        <section class="sec" id="design">
+          <h2>Design Philosophy</h2>
+          <p class="sec-intro">Hermes Dreaming treats durable memory as scarce prompt budget: each run consolidates recent session traces into a few compact, high-signal memories, or deliberately writes nothing.</p>
 
-        <div class="adm adm-note">
-          <span class="adm-icon">📌</span>
-          <div style="font-family:var(--mono);font-size:13px;line-height:1.9;">
+          <div class="adm adm-note">
+            <span class="adm-icon">📌</span>
+            <div style="font-family:var(--mono);font-size:13px;line-height:1.9;">
             Hermes durable memory is premium memory.<br>
             Every character has a permanent prompt cost.<br>
             Dreaming must maximise <strong>future usefulness per character</strong>.
           </div>
-        </div>
+          </div>
 
-        <h3>What it is</h3>
-        <ul>
-          <li>A general Hermes plugin — not a memory provider</li>
-          <li>A scheduled and manual memory consolidation process</li>
-          <li>A curatorial layer over Hermes' existing built-in memory</li>
-          <li>A tool for keeping <code>MEMORY.md</code> / <code>USER.md</code> compact, current, and high-signal</li>
-        </ul>
+          <h3>What it is</h3>
+          <ul>
+            <li>A general Hermes plugin — not a memory provider</li>
+            <li>A scheduled and manual memory consolidation process</li>
+            <li>A curatorial layer over Hermes' existing built-in memory</li>
+            <li>A tool for keeping <code>MEMORY.md</code> / <code>USER.md</code> compact, current, and high-signal</li>
+          </ul>
 
-        <h3>What it is not</h3>
-        <ul>
-          <li>Not a replacement for Hermes' memory provider system</li>
-          <li>Not a vector database or temporal knowledge graph</li>
-          <li>Not a replacement for Honcho, Hindsight, Supermemory, etc.</li>
-          <li>Not a nightly memory-append process</li>
-          <li>Not dependent on any external infrastructure</li>
-        </ul>
+          <h3>What it is not</h3>
+          <ul>
+            <li>Not a replacement for Hermes' memory provider system</li>
+            <li>Not a vector database or temporal knowledge graph</li>
+            <li>Not a replacement for Honcho, Hindsight, Supermemory, etc.</li>
+            <li>Not a nightly memory-append process</li>
+            <li>Not dependent on any external infrastructure</li>
+          </ul>
 
-        <h3>Good vs bad durable memory</h3>
-        <div class="tw">
-          <table>
-            <thead><tr><th>❌ Reject</th><th>✓ Promote</th></tr></thead>
-            <tbody>
-              <tr>
-                <td><em>Ale discussed whether Dreaming should have review or auto mode.</em></td>
-                <td><em>Ale prefers simple, packaged, low-maintenance tools over custom infrastructure.</em></td>
-              </tr>
-              <tr>
-                <td><em>Ale asked about idle naps and decided not to implement them.</em></td>
-                <td><em>Ale is cost-sensitive about background tasks; prefers scheduled over idle LLM activity.</em></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+          <h3>Good vs bad durable memory</h3>
+          <div class="tw">
+            <table>
+              <thead>
+                <tr>
+                  <th>❌ Reject</th>
+                  <th>✓ Promote</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <em>Ale discussed whether Dreaming should have review or auto mode.</em>
+                  </td>
+                  <td>
+                    <em>Ale prefers simple, packaged, low-maintenance tools over custom infrastructure.</em>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <em>Ale asked about idle naps and decided not to implement them.</em>
+                  </td>
+                  <td>
+                    <em>Ale is cost-sensitive about background tasks; prefers scheduled over idle LLM activity.</em>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-        <h3>Compatibility with memory providers</h3>
-        <p>Hermes Dreaming coexists with any external memory provider. The intended layering:</p>
-        <ul>
-          <li><strong>Provider</strong> (Honcho, Hindsight, etc.) — broader long-term memory</li>
-          <li><strong>MEMORY.md / USER.md</strong> — always-prompt-visible premium memory</li>
-          <li><strong>Dreaming</strong> — curator of premium memory</li>
-        </ul>
+          <h3>Compatibility with memory providers</h3>
+          <p>Hermes Dreaming coexists with any external memory provider. The intended layering:</p>
+          <ul>
+            <li>
+              <strong>Provider</strong> (Honcho, Hindsight, etc.) — broader long-term memory</li>
+            <li>
+              <strong>MEMORY.md / USER.md</strong> — always-prompt-visible premium memory</li>
+            <li>
+              <strong>Dreaming</strong> — curator of premium memory</li>
+          </ul>
 
-        <div class="adm adm-tip" style="margin-top:32px;">
-          <span class="adm-icon">📖</span>
-          <div>
+          <div class="adm adm-tip" style="margin-top:32px;">
+            <span class="adm-icon">📖</span>
+            <div>
             See the full
             <a href="https://github.com/alejandroiglesias/hermes-dreaming/blob/main/docs/implementation-brief.md"
                target="_blank" rel="noopener">implementation brief</a>
             for the complete design specification.
           </div>
-        </div>
-      </section>
+          </div>
+        </section>
 
-      <!-- ─── CONTRIBUTING ─────────────────────────────── -->
-      <section class="sec" id="contributing">
-        <h2>Contributing</h2>
-        <p class="sec-intro">Hermes Dreaming is open source under the MIT license. Contributions, bug reports, and feature requests are welcome.</p>
+        <!-- ─── CONTRIBUTING ─────────────────────────────── -->
+        <section class="sec" id="contributing">
+          <h2>Contributing</h2>
+          <p class="sec-intro">Hermes Dreaming is open source under the MIT license. Contributions, bug reports, and feature requests are welcome.</p>
 
-        <h3>Bug reports &amp; feature requests</h3>
-        <p>Please open an issue on GitHub:</p>
-        <div class="hero-btns">
-          <a href="https://github.com/alejandroiglesias/hermes-dreaming/issues/new?template=bug_report.md"
+          <h3>Bug reports &amp; feature requests</h3>
+          <p>Please open an issue on GitHub:</p>
+          <div class="hero-btns">
+            <a href="https://github.com/alejandroiglesias/hermes-dreaming/issues/new?template=bug_report.md"
              class="btn btn-secondary" target="_blank" rel="noopener">Report a bug ↗</a>
-          <a href="https://github.com/alejandroiglesias/hermes-dreaming/issues/new?template=feature_request.md"
+            <a href="https://github.com/alejandroiglesias/hermes-dreaming/issues/new?template=feature_request.md"
              class="btn btn-secondary" target="_blank" rel="noopener">Request a feature ↗</a>
-        </div>
+          </div>
 
-        <h3>Contributing code</h3>
-        <ol>
-          <li>Fork the repository on <a href="https://github.com/alejandroiglesias/hermes-dreaming" target="_blank" rel="noopener">GitHub</a></li>
-          <li>Create a branch for your change</li>
-          <li>Run the test suite: <code>pytest tests/</code></li>
-          <li>Open a pull request against <code>main</code></li>
-        </ol>
+          <h3>Contributing code</h3>
+          <ol>
+            <li>Fork the repository on <a href="https://github.com/alejandroiglesias/hermes-dreaming" target="_blank" rel="noopener">GitHub</a>
+            </li>
+            <li>Create a branch for your change</li>
+            <li>Run the test suite: <code>pytest tests/</code>
+            </li>
+            <li>Open a pull request against <code>main</code>
+            </li>
+          </ol>
 
-        <h3>Security vulnerabilities</h3>
-        <p>Do not open a public issue. See the <a href="https://github.com/alejandroiglesias/hermes-dreaming/blob/main/SECURITY.md" target="_blank" rel="noopener">Security Policy</a> for responsible disclosure instructions.</p>
-      </section>
+          <h3>Security vulnerabilities</h3>
+          <p>Do not open a public issue. See the <a href="https://github.com/alejandroiglesias/hermes-dreaming/blob/main/SECURITY.md" target="_blank" rel="noopener">Security Policy</a> for responsible disclosure instructions.</p>
+        </section>
 
-    </main>
-  </div>
+      </main>
+    </div>
 
-  <script>
-    function toggleTheme() {
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      const next = isDark ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      localStorage.setItem('theme', next);
-      document.getElementById('theme-toggle').textContent = next === 'dark' ? '☀' : '🌙';
-    }
-    // Set correct icon on load
-    document.addEventListener('DOMContentLoaded', function() {
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      document.getElementById('theme-toggle').textContent = isDark ? '☀' : '🌙';
-    });
-
-    function cp(btn) {
-      const pre = btn.closest('.cb').querySelector('pre');
-      navigator.clipboard.writeText(pre.textContent.trim()).then(() => {
-        btn.textContent = 'Copied!';
-        btn.classList.add('ok');
-        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 2000);
+    <script>
+      function toggleTheme() {
+        const isDark = document
+          .documentElement
+          .getAttribute('data-theme') === 'dark';
+        const next = isDark
+          ? 'light'
+          : 'dark';
+        document
+          .documentElement
+          .setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        document
+          .getElementById('theme-toggle')
+          .textContent = next === 'dark'
+            ? '☀'
+            : '🌙';
+      }
+      // Set correct icon on load
+      document.addEventListener('DOMContentLoaded', function () {
+        const isDark = document
+          .documentElement
+          .getAttribute('data-theme') === 'dark';
+        document
+          .getElementById('theme-toggle')
+          .textContent = isDark
+            ? '☀'
+            : '🌙';
       });
-    }
 
-    const secs = document.querySelectorAll('.hero, .sec');
-    const links = document.querySelectorAll('.nav-a');
-    const io = new IntersectionObserver(entries => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          const id = e.target.id;
-          links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
-        }
-      });
-    }, { rootMargin: '-15% 0px -78% 0px' });
-    secs.forEach(s => io.observe(s));
+      function cp(btn) {
+        const pre = btn
+          .closest('.cb')
+          .querySelector('pre');
+        navigator
+          .clipboard
+          .writeText(pre.textContent.trim())
+          .then(() => {
+            btn.textContent = 'Copied!';
+            btn
+              .classList
+              .add('ok');
+            setTimeout(() => {
+              btn.textContent = 'Copy';
+              btn
+                .classList
+                .remove('ok');
+            }, 2000);
+          });
+      }
 
-    function openMenu()  { document.getElementById('sidebar').classList.add('open');    document.getElementById('backdrop').classList.add('show'); }
-    function closeMenu() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('backdrop').classList.remove('show'); }
-    links.forEach(l => l.addEventListener('click', closeMenu));
-  </script>
-</body>
+      const secs = document.querySelectorAll('.hero, .sec');
+      const links = document.querySelectorAll('.nav-a');
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            const id = e.target.id;
+            links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+          }
+        });
+      }, {rootMargin: '-15% 0px -78% 0px'});
+      secs.forEach(s => io.observe(s));
+
+      function openMenu() {
+        document
+          .getElementById('sidebar')
+          .classList
+          .add('open');
+        document
+          .getElementById('backdrop')
+          .classList
+          .add('show');
+      }
+      function closeMenu() {
+        document
+          .getElementById('sidebar')
+          .classList
+          .remove('open');
+        document
+          .getElementById('backdrop')
+          .classList
+          .remove('show');
+      }
+      links.forEach(l => l.addEventListener('click', closeMenu));
+    </script>
+  </body>
 </html>

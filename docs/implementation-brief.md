@@ -1,6 +1,6 @@
 # Hermes Dreaming — Implementation Brief
 
-**Project name:** `hermes-dreaming`  
+**Project name:** Hermes Dreaming  
 **Status:** Proposed  
 **Goal:** Build a Hermes plugin that consolidates recent session signals into scarce, prompt-visible durable memory.
 
@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-`hermes-dreaming` is a **background memory consolidation plugin for Hermes**.
+Hermes Dreaming is a **background memory consolidation plugin for Hermes**.
 
 It was originally inspired by OpenClaw Dreaming, but it should not be a line-by-line clone, a public OpenClaw comparison, or a new memory architecture. Its job is to bring a compact consolidation loop into Hermes:
 
@@ -35,7 +35,7 @@ A successful run may produce **zero durable memory writes**.
 
 ### 2.1 What this plugin is
 
-`hermes-dreaming` is:
+Hermes Dreaming is:
 
 - a general Hermes plugin, not a memory provider;
 - a scheduled/manual memory consolidation process;
@@ -45,7 +45,7 @@ A successful run may produce **zero durable memory writes**.
 
 ### 2.2 What this plugin is not
 
-`hermes-dreaming` is **not**:
+Hermes Dreaming is **not**:
 
 - a replacement for Hermes' memory provider system;
 - a new vector database;
@@ -121,7 +121,7 @@ The missing piece is a **periodic, intentional, scoring-based curator** that ask
 - Which details should remain only in session history?
 - Which workflows belong in skills rather than memory?
 
-This is where `hermes-dreaming` adds value.
+This is where Hermes Dreaming adds value.
 
 ---
 
@@ -238,7 +238,7 @@ plugins:
 
 dreaming:
   enabled: true
-  schedule: "0 3 * * *"
+  schedule: '0 3 * * *'
   max_changes_per_run: 3
 ```
 
@@ -609,7 +609,7 @@ Will this improve future answers often?
 
 #### `query_diversity`
 
-How many *different types* of future tasks or questions benefit from this? Breadth, not just frequency — a preference that helps across coding, writing, and planning is more valuable than one that only applies to a narrow task type.
+How many _different types_ of future tasks or questions benefit from this? Breadth, not just frequency — a preference that helps across coding, writing, and planning is more valuable than one that only applies to a narrow task type.
 
 #### `stability`
 
@@ -760,18 +760,23 @@ Suggested format:
 ## 2026-05-01 03:00 — Nightly Dream
 
 ### Light Sleep
+
 - Scanned 14 recent sessions.
 - Staged 12 candidates.
 - Deduped 4 repeats.
 
 ### Deep Sleep
+
 Recurring themes:
+
 - Preference for simple packaged systems.
 - Concern about background token costs.
 - Interest in premium-memory consolidation.
 
 ### REM Sleep
+
 Memory operations:
+
 1. REPLACE user memory
    - Old: Ale prefers long explanatory answers by default.
    - New: Ale prefers concise answers first, with detail added when useful.
@@ -782,10 +787,12 @@ Memory operations:
    - Reason: stable preference likely to affect future assistant architecture decisions.
 
 Rejected:
+
 - Detailed discussion of `apply_mode` was too implementation-specific.
 - Provider architecture details belong in session history or project docs, not premium memory.
 
 Summary:
+
 - 2 durable memory changes applied.
 - 10 candidates rejected.
 ```
@@ -868,7 +875,7 @@ The plugin must work whether or not a memory provider is active.
 
 ### 16.1 With Honcho
 
-If Honcho is active, `hermes-dreaming` should not replace or duplicate Honcho.
+If Honcho is active, Hermes Dreaming should not replace or duplicate Honcho.
 
 Honcho can continue to provide user modeling and semantic memory. The Dreaming plugin focuses on Hermes' built-in premium memory.
 
@@ -1277,4 +1284,4 @@ If direct file mutation is required, implement:
 
 ## 24. One-Line Summary
 
-`hermes-dreaming` should be a simple Hermes plugin that curates scarce premium memory through a Light → Deep → REM consolidation cycle — promoting very little, replacing what is superseded, merging what is redundant, and keeping durable prompt memory compact, current, and high-signal.
+Hermes Dreaming should be a simple Hermes plugin that curates scarce premium memory through a Light → Deep → REM consolidation cycle — promoting very little, replacing what is superseded, merging what is redundant, and keeping durable prompt memory compact, current, and high-signal.
