@@ -22,9 +22,10 @@ Format (brief §14):
 Each run appends a dated header and its sections.
 """
 
+import json
 from datetime import datetime, timezone
 
-from .paths import DREAMS_MD
+from .paths import DREAMS_MD, RUNS_DIR
 
 _KNOWN_SECTIONS = ("Light Sleep", "Deep Sleep", "REM Sleep", "Summary")
 
@@ -102,3 +103,62 @@ def write_summary(
         f"- Candidates rejected: {candidates_rejected}",
     ]
     write_section("Summary", "\n".join(lines))
+
+
+def render_dreams_md_from_runs() -> str:
+    """Rebuild DREAMS.md from canonical run records.
+
+    Run records (~/.hermes/dreaming/runs/*.json) are the source of truth.
+    This function reproduces the diary that is otherwise appended live,
+    enabling reconstruction if DREAMS.md is lost or out of sync.
+
+    Skips sidecar files (*.sections.json). Records are sorted by created_at.
+    """
+    if not RUNS_DIR.exists():
+        DREAMS_MD.write_text("", encoding="utf-8")
+        return ""
+
+    records = []
+    for path in RUNS_DIR.iterdir():
+        if not path.is_file() or path.suffix != ".json":
+            continue
+        if path.name.endswith(".sections.json"):
+            continue
+        try:
+            records.append(json.loads(path.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, OSError):
+            continue
+
+    records.sort(key=lambda r: r.get("created_at") or r.get("id") or "")
+
+    chunks: list[str] = []
+    for rec in records:
+        created = rec.get("created_at") or rec.get("id") or ""
+        header_ts = created
+        try:
+            dt = datetime.fromisoformat(created)
+            header_ts = dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        except (TypeError, ValueError):
+            pass
+        suffix = " — dry-run" if rec.get("dry_run") else ""
+        status = rec.get("status", "")
+        status_suffix = "" if status == "completed" else f" — {status}"
+        chunks.append(f"\n## {header_ts} — Dreaming run{suffix}{status_suffix}\n")
+
+        sections = rec.get("sections") or {}
+        for name in _KNOWN_SECTIONS:
+            body = sections.get(name)
+            if not body:
+                continue
+            chunks.append(f"\n### {name}\n{body.strip()}\n")
+
+        err = rec.get("error")
+        if err:
+            err_type = err.get("type", "unknown") if isinstance(err, dict) else "unknown"
+            err_msg = err.get("message", "") if isinstance(err, dict) else str(err)
+            chunks.append(f"\n### Error\n- {err_type} — {err_msg}\n")
+
+    rendered = "".join(chunks)
+    DREAMS_MD.parent.mkdir(parents=True, exist_ok=True)
+    DREAMS_MD.write_text(rendered, encoding="utf-8")
+    return rendered

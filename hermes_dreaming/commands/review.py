@@ -12,4 +12,4 @@ from ..orchestration import build
 
 
 def handle(args: str = "") -> str:
-    return build(dry_run=True)
+    return build(dry_run=True, instructions=args)

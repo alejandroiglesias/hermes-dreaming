@@ -4,12 +4,14 @@ from __future__ import annotations
 dreaming_write_dream_report — append a section to DREAMS.md.
 
 Call once per phase with the phase name and the markdown content
-for that phase's section.
+for that phase's section. The section is also captured into the
+current run record so DREAMS.md can be regenerated from runs/.
 """
 
 from typing import Any
 
 from ..dreams_md import write_section
+from ..state import append_section, read as read_state
 
 SCHEMA = {
     "name": "dreaming_write_dream_report",
@@ -47,6 +49,12 @@ def handler(params: dict[str, Any], **_) -> dict[str, Any]:
 
     try:
         write_section(section, markdown)
-        return {"written": True, "section": section}
     except ValueError as e:
         return {"error": str(e)}
+
+    state = read_state()
+    run_ts = state.get("current_run", {}).get("started_at")
+    if run_ts:
+        append_section(run_ts, section, markdown)
+
+    return {"written": True, "section": section}

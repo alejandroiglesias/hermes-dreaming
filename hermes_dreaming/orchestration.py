@@ -221,6 +221,11 @@ _SEQUENCE = """\
 3. **REM Sleep** — score Deep `promote`/`supersedes`/`merge`/`remove` decisions → `dreaming_apply_memory_op(...)` for each passing operation → `dreaming_record_decisions(phase="REM", decisions=[...])` → `dreaming_write_dream_report("REM Sleep", ...)`
 4. `dreaming_write_dream_report("Summary", ...)` — one short paragraph: N sessions scanned, N candidates staged, N ops applied/proposed, N rejected.
 5. `dreaming_finalize_run(success=true, dry_run={dry_run}, candidates_staged=N, candidates_rejected=M, changes_applied=K)`
+
+If the cycle hit an unrecoverable problem, call `dreaming_finalize_run` with
+`success=false` and pass `error_type` (one of: `timeout`, `internal_error`,
+`tool_error`, `input_too_large`, `invalid_state`, `user_canceled`) plus a
+short `error_message` so `/dreaming status` can surface why the run failed.
 """
 
 
@@ -228,20 +233,33 @@ _SEQUENCE = """\
 # Public builder
 # ---------------------------------------------------------------------------
 
-def build(dry_run: bool = False) -> str:
+def _format_instructions_section(instructions: str) -> str:
+    return (
+        "## Run instructions\n\n"
+        f"{instructions}\n\n"
+        "Apply these as a focus filter on top of the normal Light/Deep/REM cycle. "
+        "They do not override the safety constraints or scoring thresholds.\n"
+    )
+
+
+def build(dry_run: bool = False, instructions: str = "") -> str:
     """
     Build and return the full orchestration prompt.
 
     Also opens the DREAMS.md run header and records the run start in state.json.
+
+    `instructions` is an optional free-text focus for this run. When empty,
+    `DreamingConfig.instructions` from `~/.hermes/config.yaml` is used.
     """
     ensure_dirs()
     cfg = load_config()
+    effective_instructions = (instructions or "").strip() or (cfg.instructions or "").strip()
     files = read_both()
     sessions = list_recent(limit=cfg.recent_sessions_limit)
     prior_candidates = read_candidates()
 
     # Record run start (idempotent if already started)
-    run_ts = start_run(dry_run=dry_run)
+    run_ts = start_run(dry_run=dry_run, instructions=effective_instructions)
     open_run(dry_run=dry_run)
 
     # Build capacity warning if needed
@@ -254,6 +272,9 @@ def build(dry_run: bool = False) -> str:
             )
 
     sections = [_FRAMING]
+
+    if effective_instructions:
+        sections.append(_format_instructions_section(effective_instructions))
 
     # Current memory state
     sections.append("## Current durable memory\n")

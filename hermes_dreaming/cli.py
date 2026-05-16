@@ -13,8 +13,20 @@ def register_cli(parser: argparse.ArgumentParser) -> None:
     """Add dreaming subcommands to the hermes dreaming argparse parser."""
     subs = parser.add_subparsers(dest="dreaming_command", metavar="<command>")
 
-    subs.add_parser("run",     help="Run a full dreaming cycle")
-    subs.add_parser("review",  help="Dry-run: propose ops without applying them")
+    run_p = subs.add_parser("run", help="Run a full dreaming cycle")
+    run_p.add_argument(
+        "--instructions",
+        default="",
+        help="Free-text focus for this run (overrides dreaming.instructions in config).",
+    )
+
+    review_p = subs.add_parser("review", help="Dry-run: propose ops without applying them")
+    review_p.add_argument(
+        "--instructions",
+        default="",
+        help="Free-text focus for this run (overrides dreaming.instructions in config).",
+    )
+
     subs.add_parser("status",  help="Show last run, candidate counts, memory usage")
     subs.add_parser("compact", help="Merge duplicates and remove obsolete entries")
 
@@ -41,11 +53,13 @@ def handle_cli(args: argparse.Namespace) -> None:
 
     elif sub == "run":
         from .commands.run import handle
-        print(handle())
+        instructions = getattr(args, "instructions", "") or ""
+        print(handle(instructions))
 
     elif sub == "review":
         from .commands.review import handle
-        print(handle())
+        instructions = getattr(args, "instructions", "") or ""
+        print(handle(instructions))
 
     elif sub == "compact":
         from .commands.compact import handle
