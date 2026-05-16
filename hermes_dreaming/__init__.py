@@ -34,14 +34,16 @@ def _current_version() -> str:
 
 def _read_update_cache() -> str | None:
     """Return the cached latest version if the cache is still fresh, else None."""
+    if not _UPDATE_CACHE_FILE.exists():
+        return None
     try:
-        if _UPDATE_CACHE_FILE.exists():
-            cached = json.loads(_UPDATE_CACHE_FILE.read_text())
-            if time.time() - cached.get("ts", 0) < _UPDATE_CACHE_TTL:
-                return cached.get("latest")
+        cached = json.loads(_UPDATE_CACHE_FILE.read_text())
     except Exception:
-        pass
-    return None
+        logger.warning("hermes-dreaming: malformed update cache at %s", _UPDATE_CACHE_FILE, exc_info=True)
+        return None
+    if time.time() - cached.get("ts", 0) >= _UPDATE_CACHE_TTL:
+        return None
+    return cached.get("latest")
 
 
 def _fetch_and_cache_latest() -> str | None:
@@ -51,39 +53,56 @@ def _fetch_and_cache_latest() -> str | None:
             _RELEASES_URL, timeout=5,
         ) as resp:
             tag = json.loads(resp.read())["tag_name"]
-        latest = tag.lstrip("v")
-        _UPDATE_CACHE_FILE.write_text(json.dumps({"ts": time.time(), "latest": latest}))
-        return latest
     except Exception:
+        logger.warning("hermes-dreaming: update fetch failed", exc_info=True)
         return None
+    latest = tag.lstrip("v")
+    try:
+        _UPDATE_CACHE_FILE.write_text(json.dumps({"ts": time.time(), "latest": latest}))
+    except Exception:
+        logger.warning("hermes-dreaming: failed to write update cache", exc_info=True)
+    return latest
 
 
-def _notify_if_update_available(ctx, latest: str | None) -> None:
+def _notify_if_update_available(latest: str | None) -> None:
+    """Print to stdout — the only sink that's visible at plugin-load time.
+
+    ctx.inject_message is unusable here: plugins load before the CLI sets its
+    _cli_ref (see hermes_cli/plugins.py — discover_plugins() runs at module
+    import in model_tools.py, which executes before HermesCLI.__init__).
+    """
     if not latest:
         return
-    try:
-        current = _current_version()
-    except Exception:
-        return
+    current = _current_version()
     if latest != current:
         msg = (
             f"[hermes-dreaming] Update available: {current} → {latest}. "
             f"Run: hermes plugins update hermes-dreaming"
         )
         logger.warning(msg)
-        ctx.inject_message(msg)
+        print(msg, flush=True)
 
 
-def _check_for_update(ctx) -> None:
+def _check_for_update() -> None:
     """Notify from cache immediately; refresh cache in background."""
-    cached = _read_update_cache()
-    _notify_if_update_available(ctx, cached)
+    try:
+        cached = _read_update_cache()
+    except Exception:
+        logger.warning("hermes-dreaming: update cache read failed", exc_info=True)
+        cached = None
+
+    try:
+        _notify_if_update_available(cached)
+    except Exception:
+        logger.warning("hermes-dreaming: update notify failed", exc_info=True)
 
     def _refresh():
-        latest = _fetch_and_cache_latest()
-        # Only notify if this session hasn't already shown a notice.
-        if latest and not cached:
-            _notify_if_update_available(ctx, latest)
+        try:
+            latest = _fetch_and_cache_latest()
+            if latest and not cached:
+                _notify_if_update_available(latest)
+        except Exception:
+            logger.warning("hermes-dreaming: background update check failed", exc_info=True)
 
     threading.Thread(target=_refresh, daemon=True).start()
 
@@ -201,4 +220,4 @@ def register(ctx) -> None:
     ctx.register_hook("on_session_end", _on_session_end)
 
     # --- Update check: fires from cache synchronously, refreshes cache in background ---
-    _check_for_update(ctx)
+    _check_for_update()
