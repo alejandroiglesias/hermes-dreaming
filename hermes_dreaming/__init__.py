@@ -9,35 +9,83 @@ CLI subcommands, and hooks.
 
 import json
 import logging
+import threading
+import time
 import urllib.request
 from pathlib import Path
 
-from .paths import ensure_dirs
+from .paths import ensure_dirs, DREAMING_DIR
 from . import state as _state
 
 logger = logging.getLogger(__name__)
 
+_UPDATE_CACHE_TTL = 6 * 3600  # 6 hours, same cadence as Hermes itself
+_UPDATE_CACHE_FILE = DREAMING_DIR / ".update_check"
+_RELEASES_URL = (
+    "https://api.github.com/repos/alejandroiglesias/hermes-dreaming/releases/latest"
+)
 
-def _check_for_update(ctx) -> None:
+
+def _current_version() -> str:
+    import yaml
+    plugin_yaml = Path(__file__).parent / "plugin.yaml"
+    return yaml.safe_load(plugin_yaml.read_text())["version"]
+
+
+def _read_update_cache() -> str | None:
+    """Return the cached latest version if the cache is still fresh, else None."""
     try:
-        import yaml
-        plugin_yaml = Path(__file__).parent / "plugin.yaml"
-        current = yaml.safe_load(plugin_yaml.read_text())["version"]
-        with urllib.request.urlopen(  # nosec B310 - safe: HTTPS to GitHub API with timeout
-            "https://api.github.com/repos/alejandroiglesias/hermes-dreaming/releases/latest",
-            timeout=1,
-        ) as resp:
-            tag = json.loads(resp.read())["tag_name"]  # e.g. "v0.3.5"
-        latest = tag.lstrip("v")
-        if latest != current:
-            msg = (
-                f"[hermes-dreaming] Update available: {current} → {latest}. "
-                f"Run: hermes plugins update hermes-dreaming"
-            )
-            logger.warning(msg)
-            ctx.inject_message(msg)
+        if _UPDATE_CACHE_FILE.exists():
+            cached = json.loads(_UPDATE_CACHE_FILE.read_text())
+            if time.time() - cached.get("ts", 0) < _UPDATE_CACHE_TTL:
+                return cached.get("latest")
     except Exception:
         pass
+    return None
+
+
+def _fetch_and_cache_latest() -> str | None:
+    """Hit the GitHub releases API and write the cache. Returns latest version or None."""
+    try:
+        with urllib.request.urlopen(  # nosec B310 - safe: HTTPS to GitHub API with timeout
+            _RELEASES_URL, timeout=5,
+        ) as resp:
+            tag = json.loads(resp.read())["tag_name"]
+        latest = tag.lstrip("v")
+        _UPDATE_CACHE_FILE.write_text(json.dumps({"ts": time.time(), "latest": latest}))
+        return latest
+    except Exception:
+        return None
+
+
+def _notify_if_update_available(ctx, latest: str | None) -> None:
+    if not latest:
+        return
+    try:
+        current = _current_version()
+    except Exception:
+        return
+    if latest != current:
+        msg = (
+            f"[hermes-dreaming] Update available: {current} → {latest}. "
+            f"Run: hermes plugins update hermes-dreaming"
+        )
+        logger.warning(msg)
+        ctx.inject_message(msg)
+
+
+def _check_for_update(ctx) -> None:
+    """Notify from cache immediately; refresh cache in background."""
+    cached = _read_update_cache()
+    _notify_if_update_available(ctx, cached)
+
+    def _refresh():
+        latest = _fetch_and_cache_latest()
+        # Only notify if this session hasn't already shown a notice.
+        if latest and not cached:
+            _notify_if_update_available(ctx, latest)
+
+    threading.Thread(target=_refresh, daemon=True).start()
 
 _HELP = """\
 /dreaming <subcommand> [instructions]
@@ -152,5 +200,5 @@ def register(ctx) -> None:
 
     ctx.register_hook("on_session_end", _on_session_end)
 
-    # --- Update check (synchronous, short timeout so inject_message fires during init) ---
+    # --- Update check: fires from cache synchronously, refreshes cache in background ---
     _check_for_update(ctx)
