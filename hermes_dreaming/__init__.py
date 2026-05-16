@@ -28,7 +28,7 @@ _RELEASES_URL = (
 
 def _current_version() -> str:
     import yaml
-    plugin_yaml = Path(__file__).parent / "plugin.yaml"
+    plugin_yaml = Path(__file__).parent.parent / "plugin.yaml"
     return yaml.safe_load(plugin_yaml.read_text())["version"]
 
 
