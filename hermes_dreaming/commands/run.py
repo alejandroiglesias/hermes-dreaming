@@ -11,4 +11,4 @@ from ..orchestration import build
 
 
 def handle(args: str = "") -> str:
-    return build(dry_run=False)
+    return build(dry_run=False, instructions=args)

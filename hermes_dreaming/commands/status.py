@@ -19,7 +19,7 @@ def handle(args: str = "") -> str:
     last_run = state.get("last_run", "never")
     last_ok = state.get("last_successful_run", "never")
     current = state.get("current_run")
-    summary = state.get("last_summary", {})
+    summary = state.get("last_summary", {}) or {}
 
     candidates = _count_lines(CANDIDATES_JSONL)
     promotions = _count_lines(PROMOTIONS_JSONL)
@@ -35,7 +35,11 @@ def handle(args: str = "") -> str:
 
     if current:
         mode = "dry-run" if current.get("dry_run") else "live"
-        lines.append(f"Current run:         in progress ({mode}, started {current['started_at']})")
+        started = current.get("started_at") or current.get("created_at", "")
+        lines.append(f"Current run:         in progress ({mode}, started {started})")
+        focus = (current.get("instructions") or "").strip()
+        if focus:
+            lines.append(f"Current run focus:   {focus}")
 
     lines += [
         "",
@@ -47,6 +51,16 @@ def handle(args: str = "") -> str:
         changes = summary.get("changes_applied", 0)
         rejected = summary.get("candidates_rejected", 0)
         lines.append(f"Last run changes:    {changes} applied, {rejected} rejected")
+
+        focus = (summary.get("instructions") or "").strip()
+        if focus:
+            lines.append(f"Last run focus:      {focus}")
+
+        err = summary.get("error")
+        if err:
+            err_type = err.get("type", "unknown") if isinstance(err, dict) else "unknown"
+            err_msg = err.get("message", "") if isinstance(err, dict) else str(err)
+            lines.append(f"Last run error:      {err_type} — {err_msg}")
 
     lines += ["", "Memory usage:"]
     for mf in files.values():

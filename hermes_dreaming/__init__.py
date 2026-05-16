@@ -41,7 +41,7 @@ def _check_for_update(ctx) -> None:
         pass
 
 _HELP = """\
-/dreaming <subcommand>
+/dreaming <subcommand> [instructions]
 
 Subcommands:
   run           Run a full dreaming cycle (Light → Deep → REM)
@@ -50,10 +50,16 @@ Subcommands:
   compact       Merge duplicates and remove obsolete entries (no new adds)
   install-cron  Register the nightly dreaming cron job (idempotent)
 
+The `run` and `review` subcommands accept optional free-text instructions
+that focus the cycle (e.g. "focus on coding-style preferences"). When no
+instructions are given, the value of `dreaming.instructions` in
+~/.hermes/config.yaml is used.
+
 Examples:
   /dreaming status
   /dreaming review
   /dreaming run
+  /dreaming run focus on coding-style preferences
   /dreaming install-cron
 """
 
@@ -74,13 +80,15 @@ def register(ctx) -> None:
 
         if sub == "run":
             from .commands.run import handle
-            prompt = handle(raw_args[len("run"):].strip())
+            instructions = raw_args[len("run"):].strip()
+            prompt = handle(instructions)
             ctx.inject_message(prompt)
             return "Dreaming cycle started (live). Running Light → Deep → REM…"
 
         if sub == "review":
             from .commands.review import handle
-            prompt = handle(raw_args[len("review"):].strip())
+            instructions = raw_args[len("review"):].strip()
+            prompt = handle(instructions)
             ctx.inject_message(prompt)
             return "Dreaming cycle started (dry-run). Running Light → Deep → REM…"
 
@@ -101,7 +109,7 @@ def register(ctx) -> None:
         "dreaming",
         handler=_handle_slash,
         description="Hermes memory consolidation (run / review / status / compact / install-cron)",
-        args_hint="<run|review|status|compact|install-cron>",
+        args_hint="<run|review|status|compact|install-cron> [instructions]",
     )
 
     # --- Single CLI command: hermes dreaming <subcmd> ---

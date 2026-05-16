@@ -3,7 +3,15 @@ from __future__ import annotations
 
 import pytest
 
-from hermes_dreaming.orchestration import _rem_instructions
+import hermes_dreaming.config as _config
+import hermes_dreaming.dreams_md as _dreams
+import hermes_dreaming.memory_io as _mio
+import hermes_dreaming.paths as _paths
+import hermes_dreaming.session_reader as _sr
+import hermes_dreaming.sidecar as _sidecar
+import hermes_dreaming.state as _state
+import hermes_dreaming.orchestration as _orch
+from hermes_dreaming.orchestration import _rem_instructions, build
 from hermes_dreaming.scoring import (
     ADD_MIN_SCORE,
     REPLACE_MIN_SCORE,
@@ -120,3 +128,78 @@ def test_operation_preference_order_present(rem_prompt):
     assert "replace" in rem_prompt
     assert "remove" in rem_prompt
     assert "add" in rem_prompt
+
+
+# ---------------------------------------------------------------------------
+# Per-run instructions plumbing
+# ---------------------------------------------------------------------------
+
+@pytest.fixture()
+def isolated_build(tmp_path, monkeypatch):
+    """Redirect paths and stub session listing so `build` runs in isolation."""
+    mem_dir = tmp_path / "memories"
+    mem_dir.mkdir()
+    dream_dir = tmp_path / "dreaming"
+    dream_dir.mkdir()
+    (mem_dir / "MEMORY.md").write_text("", encoding="utf-8")
+    (mem_dir / "USER.md").write_text("", encoding="utf-8")
+
+    for mod in (_paths, _state, _sidecar, _mio, _config, _dreams, _orch):
+        if hasattr(mod, "MEMORY_MD"):
+            monkeypatch.setattr(mod, "MEMORY_MD", mem_dir / "MEMORY.md")
+        if hasattr(mod, "USER_MD"):
+            monkeypatch.setattr(mod, "USER_MD", mem_dir / "USER.md")
+        if hasattr(mod, "DREAMING_DIR"):
+            monkeypatch.setattr(mod, "DREAMING_DIR", dream_dir)
+        if hasattr(mod, "STATE_JSON"):
+            monkeypatch.setattr(mod, "STATE_JSON", dream_dir / "state.json")
+        if hasattr(mod, "CANDIDATES_JSONL"):
+            monkeypatch.setattr(mod, "CANDIDATES_JSONL", dream_dir / "candidates.jsonl")
+        if hasattr(mod, "DREAMS_MD"):
+            monkeypatch.setattr(mod, "DREAMS_MD", dream_dir / "DREAMS.md")
+        if hasattr(mod, "RUNS_DIR"):
+            monkeypatch.setattr(mod, "RUNS_DIR", dream_dir / "runs")
+        if hasattr(mod, "CONFIG_FILE"):
+            monkeypatch.setattr(mod, "CONFIG_FILE", dream_dir / "config.yaml")
+
+    # Stub session listing so we don't hit ~/.hermes/state.db
+    monkeypatch.setattr(_orch, "list_recent", lambda limit=14: [])
+    monkeypatch.setattr(_orch, "fmt_sessions", lambda sessions: "")
+
+    # Force config reload per test
+    monkeypatch.setattr(_config, "_config", None)
+
+    return {"dream_dir": dream_dir}
+
+
+def test_build_includes_explicit_instructions_section(isolated_build):
+    prompt = build(dry_run=False, instructions="focus on coding-style preferences")
+    assert "## Run instructions" in prompt
+    assert "focus on coding-style preferences" in prompt
+
+
+def test_build_omits_instructions_section_when_empty(isolated_build):
+    prompt = build(dry_run=False, instructions="")
+    assert "## Run instructions" not in prompt
+
+
+def test_build_falls_back_to_config_instructions(isolated_build, monkeypatch):
+    cfg = _config.DreamingConfig(instructions="from config: ignore debugging")
+    monkeypatch.setattr(_config, "_config", cfg)
+    prompt = build(dry_run=False, instructions="")
+    assert "## Run instructions" in prompt
+    assert "from config: ignore debugging" in prompt
+
+
+def test_build_positional_instructions_override_config(isolated_build, monkeypatch):
+    cfg = _config.DreamingConfig(instructions="from config")
+    monkeypatch.setattr(_config, "_config", cfg)
+    prompt = build(dry_run=False, instructions="from caller")
+    assert "from caller" in prompt
+    assert "from config" not in prompt
+
+
+def test_build_records_instructions_in_run_record(isolated_build):
+    build(dry_run=False, instructions="targeted focus")
+    state = _state.read()
+    assert state["current_run"]["instructions"] == "targeted focus"

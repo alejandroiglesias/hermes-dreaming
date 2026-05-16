@@ -18,6 +18,7 @@ class DreamingConfig:
     max_adds_per_run: int = 1
     max_new_chars_per_run: int = 250
     recent_sessions_limit: int = 14
+    instructions: str = ""
 
 
 _config: DreamingConfig | None = None
