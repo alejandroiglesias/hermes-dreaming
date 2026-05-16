@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.6] - 2026-05-16
+
+### Added
+- **Per-run instructions**: `/dreaming run <text>` and `hermes dreaming run --instructions "<text>"` inject a free-text focus into the orchestration prompt for that cycle. `/dreaming review` supports the same flag. Falls back to `dreaming.instructions` in `~/.hermes/config.yaml` for unattended cron runs.
+- **Error taxonomy**: `dreaming_finalize_run` now accepts `error_type` (one of `timeout`, `internal_error`, `tool_error`, `input_too_large`, `invalid_state`, `user_canceled`) and `error_message` when `success=false`. `/dreaming status` surfaces both fields so overnight cron failures are no longer silent.
+- **Canonical run-record schema**: `runs/*.json` now has stable typed fields — `schema_version`, `id`, `status`, `dry_run`, `instructions`, `created_at`, `ended_at`, `error`, `summary`, `sections`. `start_run` writes an initial `"running"` record; `dreaming_write_dream_report` accumulates phase sections into a sidecar that `finish_run` folds in.
+- `render_dreams_md_from_runs()` to rebuild `DREAMS.md` from canonical run records.
+- `dreaming.instructions` config key in `~/.hermes/config.yaml` for a persistent per-schedule focus.
+
 ## [0.3.5] - 2026-05-11
 
 ### Changed
