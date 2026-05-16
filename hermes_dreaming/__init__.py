@@ -9,7 +9,6 @@ CLI subcommands, and hooks.
 
 import json
 import logging
-import threading
 import urllib.request
 from pathlib import Path
 
@@ -26,7 +25,7 @@ def _check_for_update(ctx) -> None:
         current = yaml.safe_load(plugin_yaml.read_text())["version"]
         with urllib.request.urlopen(  # nosec B310 - safe: HTTPS to GitHub API with timeout
             "https://api.github.com/repos/alejandroiglesias/hermes-dreaming/releases/latest",
-            timeout=3,
+            timeout=1,
         ) as resp:
             tag = json.loads(resp.read())["tag_name"]  # e.g. "v0.3.5"
         latest = tag.lstrip("v")
@@ -153,5 +152,5 @@ def register(ctx) -> None:
 
     ctx.register_hook("on_session_end", _on_session_end)
 
-    # --- Background update check ---
-    threading.Thread(target=_check_for_update, args=(ctx,), daemon=True).start()
+    # --- Update check (synchronous, short timeout so inject_message fires during init) ---
+    _check_for_update(ctx)
