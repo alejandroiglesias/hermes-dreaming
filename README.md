@@ -4,6 +4,10 @@
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/alejandroiglesias/hermes-dreaming/badge)](https://securityscorecards.dev/viewer/?uri=github.com/alejandroiglesias/hermes-dreaming)
 [![Socket Badge](https://socket.dev/api/badge/pypi/package/hermes-dreaming)](https://socket.dev/pypi/package/hermes-dreaming)
 
+<p align="center">
+  <img src="site/hermes-dreaming.png" alt="Hermes Dreaming" width="220">
+</p>
+
 A background memory consolidation plugin for [Hermes](https://hermes-agent.nousresearch.com), built around Hermes' small, always-prompt-visible memory model.
 
 ## What it does
