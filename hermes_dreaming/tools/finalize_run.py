@@ -8,7 +8,7 @@ Call at the very end of every Dreaming cycle (both run and review modes).
 
 from typing import Any
 
-from ..state import ERROR_TYPES, read as read_state, finish_run
+from ..state import ERROR_TYPES, ensure_current_run, read as read_state, finish_run
 
 SCHEMA = {
     "name": "dreaming_finalize_run",
@@ -68,7 +68,11 @@ SCHEMA = {
 
 def handler(params: dict[str, Any], **_) -> dict[str, Any]:
     state = read_state()
-    run_ts = state.get("current_run", {}).get("started_at", "unknown")
+    current = state.get("current_run") or ensure_current_run(
+        dry_run=bool(params.get("dry_run", False)),
+        instructions="auto-started by dreaming_finalize_run",
+    )
+    run_ts = current.get("started_at", "unknown")
 
     success = bool(params.get("success", False))
 

@@ -45,14 +45,32 @@ class MemoryFile(NamedTuple):
 
 
 def _parse_entries(text: str) -> list[str]:
-    """Extract bullet-list lines from a memory file."""
-    entries = []
+    """
+    Extract durable-memory entries from a memory file.
+
+    Supports both:
+    - canonical bullet lines (`- ...`)
+    - Hermes USER.md paragraph format separated by `§`
+    """
+    entries: list[str] = []
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped.startswith("-") or stripped == "-":
             continue
         entries.append(stripped)
-    return entries
+    if entries:
+        return entries
+
+    # Hermes core can store USER.md as paragraph entries delimited by "§".
+    if "§" in text:
+        chunks = []
+        for chunk in text.split("§"):
+            compact = " ".join(part.strip() for part in chunk.splitlines() if part.strip())
+            if compact:
+                chunks.append(compact)
+        return chunks
+
+    return []
 
 
 def read(target: str) -> MemoryFile:

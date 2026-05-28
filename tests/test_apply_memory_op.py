@@ -180,6 +180,15 @@ class TestLiveAdd:
         assert result["applied"] is True
         assert "- User avoids complex frameworks." in p["memory_md"].read_text(encoding="utf-8")
 
+    def test_add_bootstraps_missing_current_run_as_live(self, isolated_paths):
+        p = isolated_paths
+        p["memory_md"].write_text("- Old entry.\n", encoding="utf-8")
+        # Intentionally do not seed state.json with current_run.
+
+        result = _tool.handler(_base_params(score=0.91))
+
+        assert result["applied"] is True
+
     def test_add_creates_backup_on_first_mutation(self, isolated_paths):
         p = isolated_paths
         p["memory_md"].write_text("- Original.\n", encoding="utf-8")

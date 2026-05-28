@@ -10,8 +10,8 @@ current run record so DREAMS.md can be regenerated from runs/.
 
 from typing import Any
 
-from ..dreams_md import write_section
-from ..state import append_section, read as read_state
+from ..dreams_md import open_run, write_section
+from ..state import append_section, ensure_current_run, read as read_state
 
 SCHEMA = {
     "name": "dreaming_write_dream_report",
@@ -46,6 +46,15 @@ def handler(params: dict[str, Any], **_) -> dict[str, Any]:
         return {"error": "'section' is required"}
     if not markdown:
         return {"error": "'markdown' is required"}
+
+    state = read_state()
+    if not state.get("current_run"):
+        # Defensive bootstrap for tool-only runs (e.g. cron-delivered prompt text).
+        ensure_current_run(
+            dry_run=False,
+            instructions="auto-started by dreaming_write_dream_report",
+        )
+        open_run(dry_run=False)
 
     try:
         write_section(section, markdown)

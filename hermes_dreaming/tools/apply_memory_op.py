@@ -46,7 +46,7 @@ from ..paths import (
 )
 from ..scoring import ProposedOp, validate_op, thresholds_for_prompt
 from ..sidecar import append_decisions, append_promotion, existing_promotion_hashes
-from ..state import read as read_state, write as write_state
+from ..state import ensure_current_run, read as read_state, write as write_state
 
 logger = logging.getLogger(__name__)
 
@@ -155,8 +155,11 @@ def handler(params: dict[str, Any], **_) -> dict[str, Any]:
     ensure_dirs()
     state = read_state()
     cfg = load_config()
-    run_info = state.get("current_run", {})
-    dry_run = run_info.get("dry_run", True)
+    run_info = state.get("current_run") or ensure_current_run(
+        dry_run=False,
+        instructions="auto-started by dreaming_apply_memory_op",
+    )
+    dry_run = bool(run_info.get("dry_run", False))
     run_id = run_info.get("started_at", "unknown")
 
     op_str = params.get("op", "")

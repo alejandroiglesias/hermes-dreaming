@@ -13,10 +13,11 @@ Returns a JSON-serialisable dict with:
 
 from typing import Any
 
+from ..dreams_md import open_run
 from ..memory_io import read_both
 from ..session_reader import list_recent
 from ..sidecar import read_candidates
-from ..state import read as read_state
+from ..state import ensure_current_run, read as read_state
 from ..config import load as load_config
 
 SCHEMA = {
@@ -28,13 +29,44 @@ SCHEMA = {
     ),
     "parameters": {
         "type": "object",
-        "properties": {},
+        "properties": {
+            "ensure_run": {
+                "type": "boolean",
+                "description": (
+                    "When true (default), bootstrap current_run if missing so downstream "
+                    "dreaming_* tool calls are bound to a generated run_id."
+                ),
+            },
+            "dry_run": {
+                "type": "boolean",
+                "description": (
+                    "Used only when ensure_run=true and no current_run exists. "
+                    "false for live runs, true for review mode."
+                ),
+            },
+            "instructions": {
+                "type": "string",
+                "description": (
+                    "Optional run focus persisted when ensure_run bootstraps a run."
+                ),
+            },
+        },
         "required": [],
     },
 }
 
 
 def handler(_params: dict[str, Any], **_) -> dict[str, Any]:
+    ensure_run = _params.get("ensure_run", True)
+    dry_run = bool(_params.get("dry_run", False))
+    instructions = (_params.get("instructions", "") or "").strip()
+
+    if ensure_run:
+        state_before = read_state()
+        if not state_before.get("current_run"):
+            ensure_current_run(dry_run=dry_run, instructions=instructions)
+            open_run(dry_run=dry_run)
+
     cfg = load_config()
     files = read_both()
     sessions = list_recent(limit=cfg.recent_sessions_limit)
@@ -69,5 +101,6 @@ def handler(_params: dict[str, Any], **_) -> dict[str, Any]:
             for s in sessions
         ],
         "prior_candidates": candidates,
+        "current_run": state.get("current_run", {}),
         "last_run_summary": state.get("last_summary", {}),
     }

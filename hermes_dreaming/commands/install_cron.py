@@ -9,7 +9,12 @@ it prints the existing job details without creating a duplicate.
 """
 
 _JOB_NAME = "hermes-dreaming"
-_PROMPT = "/dreaming run"
+_PROMPT = (
+    "Run one full Hermes Dreaming LIVE cycle. "
+    "Start by calling dreaming_get_state with ensure_run=true and dry_run=false, "
+    "then perform Light -> Deep -> REM, and finalize with dreaming_finalize_run "
+    "using dry_run=false."
+)
 
 
 def handle(schedule: str | None = None) -> str:
@@ -69,7 +74,7 @@ def handle(schedule: str | None = None) -> str:
         f"- Schedule:  {schedule_display}\n"
         f"- Next run:  {next_run}\n"
         f"- Delivers:  local (output saved to DREAMS.md)\n\n"
-        "Each night Hermes will run `/dreaming run` in a fresh session, "
+        "Each night Hermes will run a full Dreaming cycle in a fresh session, "
         "promoting at most 1 new memory, 3 total changes, and 250 new chars.\n\n"
         "To review without applying: `hermes dreaming install-cron --schedule '0 3 * * *'`\n"
         "To remove: use `hermes cron` with the job ID above, or:\n"

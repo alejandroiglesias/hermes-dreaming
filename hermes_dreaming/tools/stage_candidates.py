@@ -10,7 +10,7 @@ by content hash so repeated runs do not accumulate duplicates.
 from typing import Any
 
 from ..sidecar import append_candidates
-from ..state import read as read_state
+from ..state import ensure_current_run, read as read_state
 
 SCHEMA = {
     "name": "dreaming_stage_candidates",
@@ -83,7 +83,11 @@ def handler(params: dict[str, Any], **_) -> dict[str, Any]:
         return {"error": "'candidates' must be a list"}
 
     state = read_state()
-    run_id = state.get("current_run", {}).get("started_at", "unknown")
+    current = state.get("current_run") or ensure_current_run(
+        dry_run=False,
+        instructions="auto-started by dreaming_stage_candidates",
+    )
+    run_id = current.get("started_at", "unknown")
 
     added, skipped = append_candidates(candidates, run_id=run_id)
     return {

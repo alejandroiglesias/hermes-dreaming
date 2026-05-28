@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.11] - 2026-05-27
+
+### Fixed
+- Dreaming tools now defensively bootstrap a missing `current_run` so cron-delivered runs no longer fall back to `run_id: "unknown"` or accidentally default to dry-run behavior in live cycles.
+- `/dreaming install-cron` now installs an explicit orchestration prompt that starts with `dreaming_get_state(ensure_run=true, dry_run=false)` to avoid slash-command routing ambiguities in scheduled jobs.
+- `USER.md` entry parsing now supports Hermes' `§`-delimited paragraph format in addition to bullet lists, so status/usage reporting reflects real entry counts.
+
 ## [0.3.6] - 2026-05-16
 
 ### Added

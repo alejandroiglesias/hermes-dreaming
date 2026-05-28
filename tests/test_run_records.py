@@ -221,3 +221,19 @@ def test_finalize_tool_success_leaves_no_error(isolated_paths):
 
     assert rec["status"] == "completed"
     assert rec["error"] is None
+
+
+def test_finalize_tool_bootstraps_missing_current_run(isolated_paths):
+    result = _finalize.handler({
+        "success": True,
+        "dry_run": False,
+        "changes_applied": 0,
+        "candidates_staged": 0,
+        "candidates_rejected": 0,
+    })
+    run_id = result["run_id"]
+    assert run_id != "unknown"
+
+    rec = _load_run(isolated_paths["runs_dir"], run_id)
+    assert rec["status"] == "completed"
+    assert rec["dry_run"] is False

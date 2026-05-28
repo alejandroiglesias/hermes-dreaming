@@ -5,7 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from hermes_dreaming.commands.install_cron import handle, _find_existing, _JOB_NAME
+from hermes_dreaming.commands.install_cron import (
+    handle,
+    _find_existing,
+    _JOB_NAME,
+    _PROMPT,
+)
 
 
 def _make_job(job_id="abc123", schedule_display="0 3 * * *", enabled=True):
@@ -87,7 +92,7 @@ def test_handle_creates_job_when_none_exists():
 
     mock_cron.create_job.assert_called_once()
     call_kwargs = mock_cron.create_job.call_args
-    assert call_kwargs.kwargs.get("prompt") == "/dreaming run" or "/dreaming run" in str(call_kwargs)
+    assert call_kwargs.kwargs.get("prompt") == _PROMPT
     assert "new999" in result
     assert "registered" in result.lower()
 

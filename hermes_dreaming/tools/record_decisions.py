@@ -10,7 +10,7 @@ to decisions.jsonl for audit. Does not mutate durable memory.
 from typing import Any
 
 from ..sidecar import append_decisions
-from ..state import read as read_state
+from ..state import ensure_current_run, read as read_state
 
 SCHEMA = {
     "name": "dreaming_record_decisions",
@@ -128,7 +128,11 @@ def handler(params: dict[str, Any], **_) -> dict[str, Any]:
         return {"error": "'decisions' must be a list"}
 
     state = read_state()
-    run_id = state.get("current_run", {}).get("started_at", "unknown")
+    current = state.get("current_run") or ensure_current_run(
+        dry_run=False,
+        instructions="auto-started by dreaming_record_decisions",
+    )
+    run_id = current.get("started_at", "unknown")
 
     extra = {}
     if themes:

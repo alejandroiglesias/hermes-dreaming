@@ -4,7 +4,7 @@ Tests for dreaming_write_dream_report tool.
 Covers:
 - Writes the section to DREAMS.md (existing behaviour, regression guard).
 - Also appends the section to the per-run sidecar in runs/.
-- Sidecar is not written when no current_run is in state.
+- Bootstraps a run and writes sidecar when current_run is missing.
 - Handler returns an error for an unknown section name.
 """
 from __future__ import annotations
@@ -102,8 +102,8 @@ def test_handler_accumulates_multiple_sections_in_sidecar(isolated_paths):
     assert data["Summary"] == "summary content"
 
 
-def test_handler_does_not_write_sidecar_when_no_current_run(isolated_paths):
-    """No state.json / no current_run → DREAMS.md still written, no sidecar created."""
+def test_handler_bootstraps_run_when_current_run_missing(isolated_paths):
+    """No state.json/current_run should bootstrap run and still write sidecar."""
     dreams_md = isolated_paths["dream_dir"] / "DREAMS.md"
     dreams_md.write_text("\n## 2099-01-01 03:00 UTC — Dreaming run\n")
 
@@ -112,7 +112,9 @@ def test_handler_does_not_write_sidecar_when_no_current_run(isolated_paths):
     assert result["written"] is True
     runs_dir = isolated_paths["dream_dir"] / "runs"
     sidecars = list(runs_dir.glob("*.sections.json"))
-    assert sidecars == [], f"unexpected sidecar: {sidecars}"
+    assert len(sidecars) == 1
+    data = json.loads(sidecars[0].read_text())
+    assert data["Light Sleep"] == "orphan section"
 
 
 # ---------------------------------------------------------------------------

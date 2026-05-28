@@ -41,6 +41,12 @@ def test_parse_entries_ignores_non_bullet_lines():
     assert entries == ["- Bullet."]
 
 
+def test_parse_entries_supports_section_delimited_user_format():
+    text = "Preference one.\n§\nPreference two.\n§\nPreference three."
+    entries = _parse_entries(text)
+    assert entries == ["Preference one.", "Preference two.", "Preference three."]
+
+
 # ---------------------------------------------------------------------------
 # apply_add
 # ---------------------------------------------------------------------------

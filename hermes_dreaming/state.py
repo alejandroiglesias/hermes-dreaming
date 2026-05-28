@@ -84,6 +84,30 @@ def read() -> dict[str, Any]:
         raise
 
 
+def ensure_current_run(dry_run: bool = False, instructions: str = "") -> dict[str, Any]:
+    """
+    Ensure state has an active current_run and return it.
+
+    This is a defensive fallback for environments where `/dreaming run`
+    might reach tools directly (e.g. cron-delivered prompt text) without
+    first passing through orchestration.build().
+    """
+    state = read()
+    current = state.get("current_run")
+    if isinstance(current, dict) and current.get("started_at"):
+        return current
+
+    run_ts = start_run(dry_run=dry_run, instructions=instructions)
+    return {
+        "id": run_ts,
+        "status": "running",
+        "dry_run": dry_run,
+        "instructions": instructions,
+        "created_at": run_ts,
+        "started_at": run_ts,
+    }
+
+
 def write(data: dict[str, Any]) -> None:
     STATE_JSON.parent.mkdir(parents=True, exist_ok=True)
     STATE_JSON.write_text(json.dumps(data, indent=2))
