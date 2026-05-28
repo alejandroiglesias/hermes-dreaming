@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-dreaming"
-version = "0.3.11"
+version = "0.3.12"
 description = "Background memory consolidation plugin for Hermes"
 readme = "README.md"
 license = "MIT"
@@ -13,6 +13,11 @@ requires-python = ">=3.11"
 dependencies = [
     "filelock>=3.13",
     "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
 ]
 
 [project.urls]

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.12] - 2026-05-27
+
+### Changed
+- `DREAMS.md` run headers now render in local time (`YYYY-MM-DD HH:MM`) for easier human scanning, both during live writes and when rebuilding the diary from canonical run records.
+
+### Added
+- Development extras in `pyproject.toml` (`[project.optional-dependencies].dev`) now include `pytest`.
+- `Makefile` now provides a `make test` shortcut that runs tests via the project-local `.venv` and prints setup guidance when the venv is missing.
+
 ## [0.3.11] - 2026-05-27
 
 ### Fixed

@@ -23,7 +23,7 @@ Each run appends a dated header and its sections.
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 
 from .paths import DREAMS_MD, RUNS_DIR
 
@@ -31,7 +31,7 @@ _KNOWN_SECTIONS = ("Light Sleep", "Deep Sleep", "REM Sleep", "Summary")
 
 
 def _now_header(dry_run: bool) -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M")
     suffix = " — dry-run" if dry_run else ""
     return f"\n## {ts} — Dreaming run{suffix}\n"
 
@@ -137,7 +137,9 @@ def render_dreams_md_from_runs() -> str:
         header_ts = created
         try:
             dt = datetime.fromisoformat(created)
-            header_ts = dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+            if dt.tzinfo is not None:
+                dt = dt.astimezone()
+            header_ts = dt.strftime("%Y-%m-%d %H:%M")
         except (TypeError, ValueError):
             pass
         suffix = " — dry-run" if rec.get("dry_run") else ""
