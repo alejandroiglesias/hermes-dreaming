@@ -5,7 +5,7 @@ DREAMS.md writer — the human-readable audit diary for Dreaming runs.
 
 Format (brief §14):
 
-  ---
+  ------------------------------------------------------------------------
 
   ## YYYY-MM-DD HH:MM — Dreaming run [dry-run]
 
@@ -31,7 +31,7 @@ from datetime import datetime
 from .paths import DREAMS_MD, RUNS_DIR
 
 _KNOWN_SECTIONS = ("Light Sleep", "Deep Sleep", "REM Sleep", "Summary")
-_RUN_SEPARATOR = "---"
+_RUN_SEPARATOR = "-" * 72
 _HEADING_RE = re.compile(r"^\s*#{1,6}\s+(.+?)\s*#*\s*$")
 
 
@@ -50,7 +50,8 @@ def _is_run_header(line: str) -> bool:
 
 
 def _is_run_separator(line: str) -> bool:
-    return line.strip() == _RUN_SEPARATOR
+    stripped = line.strip()
+    return len(stripped) >= 3 and set(stripped) == {"-"}
 
 
 def _run_header_after_separator(lines: list[str], index: int) -> bool:

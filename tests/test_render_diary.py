@@ -101,7 +101,7 @@ def test_render_writes_to_dreams_md(isolated_paths):
 def test_render_includes_dreaming_run_header(isolated_paths):
     _write_record(isolated_paths["runs_dir"], _base_record("2099-06-15T03:00:00+00:00"))
     rendered = _dreams.render_dreams_md_from_runs()
-    assert rendered.startswith("\n---\n\n## ")
+    assert rendered.startswith(f"\n{_dreams._RUN_SEPARATOR}\n\n## ")
     assert "Dreaming run" in rendered
     assert "## " in rendered
 
@@ -116,7 +116,7 @@ def test_render_separates_each_run_with_ruler(isolated_paths):
 
     rendered = _dreams.render_dreams_md_from_runs()
 
-    assert rendered.count("\n---\n\n## ") == 2
+    assert rendered.count(f"\n{_dreams._RUN_SEPARATOR}\n\n## ") == 2
 
 
 def test_render_strips_redundant_section_headings(isolated_paths):

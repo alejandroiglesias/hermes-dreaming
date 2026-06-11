@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-dreaming"
-version = "0.3.13"
+version = "0.3.14"
 description = "Background memory consolidation plugin for Hermes"
 readme = "README.md"
 license = "MIT"

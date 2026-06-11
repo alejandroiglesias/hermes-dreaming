@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.14] - 2026-06-11
+
+### Changed
+- `DREAMS.md` run separators now render as a 72-character ruler for stronger visual separation between runs.
+- Existing short dash rulers are still recognized when cleaning stale run stubs.
+
 ## [0.3.13] - 2026-06-11
 
 ### Fixed
