@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.13] - 2026-06-11
+
+### Fixed
+- `DREAMS.md` runs are now separated by a Markdown horizontal ruler so new runs are easier to scan.
+- Redundant agent-supplied phase headings such as `## REM Sleep — ...` and `## Dreaming Summary — ...` are stripped from both live diary writes and regenerated `DREAMS.md` output.
+
 ## [0.3.12] - 2026-05-27
 
 ### Changed

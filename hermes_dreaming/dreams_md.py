@@ -5,6 +5,8 @@ DREAMS.md writer — the human-readable audit diary for Dreaming runs.
 
 Format (brief §14):
 
+  ---
+
   ## YYYY-MM-DD HH:MM — Dreaming run [dry-run]
 
   ### Light Sleep
@@ -19,21 +21,103 @@ Format (brief §14):
   ### Summary
   ...
 
-Each run appends a dated header and its sections.
+Each run appends a horizontal ruler, dated header, and its sections.
 """
 
 import json
+import re
 from datetime import datetime
 
 from .paths import DREAMS_MD, RUNS_DIR
 
 _KNOWN_SECTIONS = ("Light Sleep", "Deep Sleep", "REM Sleep", "Summary")
+_RUN_SEPARATOR = "---"
+_HEADING_RE = re.compile(r"^\s*#{1,6}\s+(.+?)\s*#*\s*$")
 
 
 def _now_header(dry_run: bool) -> str:
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
     suffix = " — dry-run" if dry_run else ""
-    return f"\n## {ts} — Dreaming run{suffix}\n"
+    return _format_run_header(ts, suffix)
+
+
+def _format_run_header(header_ts: str, suffix: str = "") -> str:
+    return f"\n{_RUN_SEPARATOR}\n\n## {header_ts} — Dreaming run{suffix}\n"
+
+
+def _is_run_header(line: str) -> bool:
+    return line.lstrip().startswith("## ") and "— Dreaming run" in line
+
+
+def _is_run_separator(line: str) -> bool:
+    return line.strip() == _RUN_SEPARATOR
+
+
+def _run_header_after_separator(lines: list[str], index: int) -> bool:
+    if not _is_run_separator(lines[index]):
+        return False
+    j = index + 1
+    while j < len(lines) and not lines[j].strip():
+        j += 1
+    return j < len(lines) and _is_run_header(lines[j])
+
+
+def _is_run_start(lines: list[str], index: int) -> bool:
+    return _is_run_header(lines[index]) or _run_header_after_separator(lines, index)
+
+
+def _redundant_heading_names(section: str) -> tuple[str, ...]:
+    if section == "Summary":
+        return ("summary", "dreaming summary")
+    return (section.lower(),)
+
+
+def _is_redundant_section_heading(section: str, line: str) -> bool:
+    match = _HEADING_RE.match(line)
+    if not match:
+        return False
+
+    title = re.sub(r"\s+", " ", match.group(1).strip().lower())
+    for name in _redundant_heading_names(section):
+        if title == name:
+            return True
+        if title.startswith(name):
+            suffix = title[len(name):].strip()
+            if suffix and suffix[0] in "—-–:([+|":
+                return True
+    return False
+
+
+def _is_known_phase_heading(line: str) -> bool:
+    for section in _KNOWN_SECTIONS:
+        if _is_redundant_section_heading(section, line):
+            return True
+    return False
+
+
+def normalize_section_markdown(section: str, markdown: str) -> str:
+    """Remove redundant phase titles from agent-supplied markdown."""
+    lines = markdown.strip().splitlines()
+
+    while lines:
+        while lines and not lines[0].strip():
+            lines.pop(0)
+        if not lines or not _is_redundant_section_heading(section, lines[0]):
+            break
+        lines.pop(0)
+
+    lines = [line for line in lines if not _is_known_phase_heading(line)]
+    return "\n".join(lines).strip()
+
+
+def _record_created_value(rec: dict, path) -> str:
+    for key in ("created_at", "id", "run_id", "ended_at"):
+        value = rec.get(key)
+        if value and value != "unknown":
+            return str(value)
+    if path.stem != "unknown":
+        return path.stem
+    return ""
 
 
 def _strip_stale_stubs(text: str) -> str:
@@ -42,21 +126,24 @@ def _strip_stale_stubs(text: str) -> str:
     result = []
     i = 0
     while i < len(lines):
-        line = lines[i]
-        if line.lstrip().startswith("## ") and "— Dreaming run" in line:
-            j = i + 1
+        if _is_run_start(lines, i):
+            start = i
+            header_index = i
+            if _run_header_after_separator(lines, i):
+                header_index = i + 1
+                while header_index < len(lines) and not lines[header_index].strip():
+                    header_index += 1
+
+            j = header_index + 1
             body: list[str] = []
-            while j < len(lines) and not (
-                lines[j].lstrip().startswith("## ") and "— Dreaming run" in lines[j]
-            ):
+            while j < len(lines) and not _is_run_start(lines, j):
                 body.append(lines[j])
                 j += 1
-            if any(l.startswith("###") for l in body):
-                result.append(line)
-                result.extend(body)
+            if any(l.lstrip().startswith("###") for l in body):
+                result.extend(lines[start:j])
             i = j
         else:
-            result.append(line)
+            result.append(lines[i])
             i += 1
     return "".join(result)
 
@@ -73,20 +160,17 @@ def open_run(dry_run: bool = False) -> None:
         f.write(header)
 
 
-def write_section(section: str, markdown: str) -> None:
+def write_section(section: str, markdown: str) -> str:
     """Append a named section (Light Sleep / Deep Sleep / REM Sleep / Summary)."""
     if section not in _KNOWN_SECTIONS:
         raise ValueError(
             f"Unknown section {section!r}. Use one of: {', '.join(_KNOWN_SECTIONS)}"
         )
-    # Strip a leading header line if the agent included one (e.g. "## Light Sleep")
-    body = markdown.strip()
-    first, _, rest = body.partition("\n")
-    if first.lstrip("#").strip().lower() == section.lower():
-        body = rest.strip()
+    body = normalize_section_markdown(section, markdown)
     block = f"\n### {section}\n{body}\n"
     with DREAMS_MD.open("a", encoding="utf-8") as f:
         f.write(block)
+    return body
 
 
 def write_summary(
@@ -125,15 +209,17 @@ def render_dreams_md_from_runs() -> str:
         if path.name.endswith(".sections.json"):
             continue
         try:
-            records.append(json.loads(path.read_text(encoding="utf-8")))
+            rec = json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             continue
+        created = _record_created_value(rec, path)
+        if created:
+            records.append((created, path, rec))
 
-    records.sort(key=lambda r: r.get("created_at") or r.get("id") or "")
+    records.sort(key=lambda item: item[0])
 
     chunks: list[str] = []
-    for rec in records:
-        created = rec.get("created_at") or rec.get("id") or ""
+    for created, _path, rec in records:
         header_ts = created
         try:
             dt = datetime.fromisoformat(created)
@@ -144,15 +230,23 @@ def render_dreams_md_from_runs() -> str:
             pass
         suffix = " — dry-run" if rec.get("dry_run") else ""
         status = rec.get("status", "")
-        status_suffix = "" if status == "completed" else f" — {status}"
-        chunks.append(f"\n## {header_ts} — Dreaming run{suffix}{status_suffix}\n")
+        if not status and rec.get("success") is True:
+            status = "completed"
+        status_suffix = "" if status in ("", "completed") else f" — {status}"
+        chunks.append(_format_run_header(header_ts, f"{suffix}{status_suffix}"))
 
         sections = rec.get("sections") or {}
+        if not sections:
+            notes = rec.get("notes")
+            if not notes and isinstance(rec.get("summary"), dict):
+                notes = rec["summary"].get("notes")
+            if notes:
+                sections = {"Summary": notes}
         for name in _KNOWN_SECTIONS:
             body = sections.get(name)
             if not body:
                 continue
-            chunks.append(f"\n### {name}\n{body.strip()}\n")
+            chunks.append(f"\n### {name}\n{normalize_section_markdown(name, body)}\n")
 
         err = rec.get("error")
         if err:

@@ -101,8 +101,59 @@ def test_render_writes_to_dreams_md(isolated_paths):
 def test_render_includes_dreaming_run_header(isolated_paths):
     _write_record(isolated_paths["runs_dir"], _base_record("2099-06-15T03:00:00+00:00"))
     rendered = _dreams.render_dreams_md_from_runs()
+    assert rendered.startswith("\n---\n\n## ")
     assert "Dreaming run" in rendered
     assert "## " in rendered
+
+
+def test_render_separates_each_run_with_ruler(isolated_paths):
+    _write_record(isolated_paths["runs_dir"], _base_record(
+        "2099-01-01T03:00:00+00:00", sections={"Summary": "first"}
+    ))
+    _write_record(isolated_paths["runs_dir"], _base_record(
+        "2099-01-02T03:00:00+00:00", sections={"Summary": "second"}
+    ))
+
+    rendered = _dreams.render_dreams_md_from_runs()
+
+    assert rendered.count("\n---\n\n## ") == 2
+
+
+def test_render_strips_redundant_section_headings(isolated_paths):
+    _write_record(isolated_paths["runs_dir"], _base_record(
+        "2099-01-01T03:00:00+00:00",
+        sections={
+            "REM Sleep": "## REM Sleep — June 4, 2026\n\n### Scored decisions\nok\n\n### Summary\nrem result",
+            "Summary": "### Summary\n## Dreaming Summary — June 4, 2026\n\nfinal",
+        },
+    ))
+
+    rendered = _dreams.render_dreams_md_from_runs()
+
+    assert "## REM Sleep — June 4, 2026" not in rendered
+    assert "## Dreaming Summary — June 4, 2026" not in rendered
+    assert rendered.count("### REM Sleep") == 1
+    assert rendered.count("### Summary") == 1
+    assert "### Scored decisions" in rendered
+    assert "rem result" in rendered
+    assert "final" in rendered
+
+
+def test_render_supports_legacy_run_id_records(isolated_paths):
+    path = isolated_paths["runs_dir"] / "2099-01-01T03-00-00+00-00.json"
+    path.write_text(json.dumps({
+        "run_id": "2099-01-01T03:00:00+00:00",
+        "success": True,
+        "dry_run": False,
+        "notes": "legacy summary",
+    }))
+
+    rendered = _dreams.render_dreams_md_from_runs()
+
+    assert "## 2099-01-01" in rendered
+    assert "Dreaming run — " not in rendered
+    assert "### Summary" in rendered
+    assert "legacy summary" in rendered
 
 
 def test_render_marks_dry_run_in_header(isolated_paths):

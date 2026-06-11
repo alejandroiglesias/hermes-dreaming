@@ -69,6 +69,60 @@ def test_handler_appends_to_dreams_md(isolated_paths):
     assert "scanned 5 sessions" in dreams_md.read_text()
 
 
+def test_handler_strips_redundant_rem_heading(isolated_paths):
+    run_ts = _set_current_run(isolated_paths["dream_dir"])
+    dreams_md = isolated_paths["dream_dir"] / "DREAMS.md"
+    dreams_md.write_text("\n## 2099-01-01 03:00 UTC — Dreaming run\n")
+
+    _wdr.handler({
+        "section": "REM Sleep",
+        "markdown": (
+            "### REM Sleep\n"
+            "## REM Sleep — June 4, 2026\n\n"
+            "### Scored decisions\n"
+            "| Candidate | Score |\n\n"
+            "### Summary\n"
+            "1 change applied.\n"
+        ),
+    })
+
+    written = dreams_md.read_text()
+    assert written.count("### REM Sleep") == 1
+    assert "## REM Sleep — June 4, 2026" not in written
+    assert "### Summary" not in written
+    assert "### Scored decisions" in written
+    assert "1 change applied." in written
+
+    sidecar = isolated_paths["dream_dir"] / "runs" / f"{run_ts.replace(':', '-')}.sections.json"
+    data = json.loads(sidecar.read_text())
+    assert data["REM Sleep"].startswith("### Scored decisions")
+    assert "### Summary" not in data["REM Sleep"]
+
+
+def test_handler_strips_redundant_summary_headings(isolated_paths):
+    run_ts = _set_current_run(isolated_paths["dream_dir"])
+    dreams_md = isolated_paths["dream_dir"] / "DREAMS.md"
+    dreams_md.write_text("\n## 2099-01-01 03:00 UTC — Dreaming run\n")
+
+    _wdr.handler({
+        "section": "Summary",
+        "markdown": (
+            "### Summary\n"
+            "## Dreaming Summary — June 4, 2026 (LIVE)\n\n"
+            "**Sessions reviewed**: June 3 sessions\n"
+        ),
+    })
+
+    written = dreams_md.read_text()
+    assert written.count("### Summary") == 1
+    assert "Dreaming Summary — June 4, 2026 (LIVE)" not in written
+    assert "**Sessions reviewed**: June 3 sessions" in written
+
+    sidecar = isolated_paths["dream_dir"] / "runs" / f"{run_ts.replace(':', '-')}.sections.json"
+    data = json.loads(sidecar.read_text())
+    assert data["Summary"].startswith("**Sessions reviewed**")
+
+
 # ---------------------------------------------------------------------------
 # Sidecar is written alongside DREAMS.md
 # ---------------------------------------------------------------------------

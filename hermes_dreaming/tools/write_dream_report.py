@@ -57,7 +57,7 @@ def handler(params: dict[str, Any], **_) -> dict[str, Any]:
         open_run(dry_run=False)
 
     try:
-        write_section(section, markdown)
+        markdown = write_section(section, markdown)
     except ValueError as e:
         return {"error": str(e)}
 
